@@ -300,7 +300,7 @@ npm run start:dev
 # 👨‍💻 Autores
 
 - Douglas Rodrigues 
-- Mauricio 
+- Mauricio T Welter
 
 ---
 
