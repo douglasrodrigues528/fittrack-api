@@ -299,8 +299,8 @@ npm run start:dev
 
 # 👨‍💻 Autores
 
-Douglas Rodrigues 
-Maurico 
+- Douglas Rodrigues 
+- Maurico 
 
 ---
 
