@@ -11,6 +11,7 @@ import { WorkoutsModule } from './presentation/modules/workouts/workouts.module'
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: '.env',
     }),
 
     CacheModule.register({
