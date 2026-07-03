@@ -16,7 +16,7 @@ import { WorkoutsModule } from './presentation/modules/workouts/workouts.module'
 
     CacheModule.register({
       isGlobal: true,
-      ttl: 60,
+      ttl: 600,
     }),
 
     TypeOrmModule.forRootAsync({
