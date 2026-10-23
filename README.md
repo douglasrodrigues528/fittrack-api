@@ -707,20 +707,22 @@ fittrack
 
 ## 4. Configurar as variáveis de ambiente
 
-Crie um arquivo `.env` na raiz do projeto:
+Copie o modelo `.env.example` para `.env` na raiz do projeto e ajuste os valores. Os principais são:
 
 ```env
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
-DB_PASSWORD=123456
+DB_PASSWORD=<senha-do-seu-postgres>
 DB_NAME=fittrack
-JWT_SECRET=jwt-secret-key
+JWT_SECRET=<segredo-aleatorio-longo>
 ```
 
 Ajuste os valores de acordo com sua instalação do PostgreSQL.
 
-Há um modelo completo em `.env.example` (inclui `CORS_ORIGINS`, `PORT`, `DATABASE_URL`, `DB_SSL` etc.). Em produção, `JWT_SECRET` é obrigatório e `synchronize` fica desligado — veja `DEPLOY.md`.
+O `.env.example` traz também `CORS_ORIGINS`, `PORT`, `DATABASE_URL`, `DB_SSL`, `TRUST_PROXY` etc. Em produção, `JWT_SECRET` é obrigatório e `synchronize` fica desligado — veja `DEPLOY.md`.
+
+No frontend, o modelo é `frontend/.env.example` (`NEXT_PUBLIC_API_URL`); copie-o para `frontend/.env.local` se a API não estiver em `http://localhost:3000`.
 
 Não envie o arquivo `.env` para o GitHub.
 

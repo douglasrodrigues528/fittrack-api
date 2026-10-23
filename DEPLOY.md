@@ -14,6 +14,8 @@ Arquitetura sugerida: **Vercel** (frontend Next.js) → **Render** (API NestJS) 
 1. Crie o PostgreSQL gerenciado e copie a **connection string** (`DATABASE_URL`).
 2. **Não use `synchronize` em produção.** Crie as tabelas com a migration (idempotente, não apaga dados; serve para banco vazio e para banco já existente): com `DATABASE_URL` do banco de produção, rode `npm run build && npm run migration:run:prod`. Faça backup antes.
 3. Catálogo de exercícios: com `DATABASE_URL` apontando para o banco de produção, rode uma vez `node scripts/sync-exercises.cjs` (cria a tabela `exercises` se faltar e importa os 873 exercícios; é idempotente).
+   - Os dados **não fazem parte do repositório**: a pasta `data/exercises/` não é versionada. O script baixa o JSON traduzido da fonte configurada nele (`DATASET_URL`) e grava uma cópia local nessa pasta.
+   - Antes de importar em produção ou de versionar esses dados, conclua a verificação de licenças e de redistribuição da seção 6 (base original e tradução).
 4. Ative backups automáticos no provedor.
 
 ## 2. API no Render (Web Service)
