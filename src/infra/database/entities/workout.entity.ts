@@ -41,7 +41,8 @@ export class WorkoutEntity {
   @Column({ type: 'jsonb', default: () => "'[]'::jsonb" })
   weekdays!: number[];
 
-  @ManyToOne(() => UserEntity, (user) => user.workouts)
+  // Excluir a conta remove também os treinos planejados do usuário.
+  @ManyToOne(() => UserEntity, (user) => user.workouts, { onDelete: 'CASCADE' })
   user!: UserEntity;
 
   @Column()

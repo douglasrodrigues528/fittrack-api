@@ -30,6 +30,7 @@ Arquitetura sugerida: **Vercel** (frontend Next.js) → **Render** (API NestJS) 
 | `JWT_SECRET` | aleatório, ≥ 32 caracteres (`node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`) — a API recusa subir sem ele |
 | `CORS_ORIGINS` | `https://seu-app.vercel.app` (vários: separados por vírgula) |
 | `ENABLE_SWAGGER` | `false` |
+| `TRUST_PROXY` | `1` (Render e outros serviços atrás de proxy) — faz a API ver o IP real do cliente e ativa o limite de tentativas de login por IP. Sem ela, em produção vale só o limite por conta. |
 
 - `PORT` é fornecida pelo Render; a API já a lê e escuta em `0.0.0.0`.
 - Teste: `GET https://<api>/exercises?limit=1` deve responder 200.
@@ -41,9 +42,11 @@ Arquitetura sugerida: **Vercel** (frontend Next.js) → **Render** (API NestJS) 
 
 ## 4. Segurança — estado atual e o que falta
 
+Contas e login: excluir a conta apaga treinos, sessões e séries (migration `CascadeWorkoutsOnUserDelete`); trocar o e-mail para um já usado responde 409; trocar a senha exige `currentPassword` e invalida todos os tokens emitidos antes (coluna `users.tokenVersion`, conferida a cada requisição); 5 senhas erradas em 15 min bloqueiam a conta por até 15 min (429 + `Retry-After`) e 50 falhas por IP bloqueiam o IP. Os contadores de login ficam em memória: com mais de uma instância da API, cada uma conta separadamente.
+
 Já feito neste código: segredo JWT e CORS por ambiente; Swagger desligável; `synchronize` desligado por padrão em produção; credenciais padrão removidas da tela de login; PATCH de treinos/usuários agora validado (antes dava para sobrescrever `userId`); `/users/:id` restrito à própria conta (antes qualquer usuário logado podia editar/excluir outros); `GET /users` (listar todos) removido, use `GET /users/me`.
 
-Ainda recomendado: `helmet` e rate limiting (`@nestjs/throttler`) em `/auth/login` e `POST /users`; mover o JWT de `localStorage` para cookie `HttpOnly` (hoje um XSS roubaria o token); política de senha mais forte; cache em memória só funciona com **uma** instância da API (para escalar, use Redis); logs estruturados e monitoramento de erros; `rejectUnauthorized:false` no SSL do banco aceita qualquer certificado — prefira o CA do provedor.
+Ainda recomendado: `helmet` e limite de requisições em `POST /users` (cadastro); mover o JWT de `localStorage` para cookie `HttpOnly` (hoje um XSS roubaria o token); política de senha mais forte; cache em memória só funciona com **uma** instância da API (para escalar, use Redis); logs estruturados e monitoramento de erros; `rejectUnauthorized:false` no SSL do banco aceita qualquer certificado — prefira o CA do provedor.
 
 ## 5. Ordem de implantação
 
