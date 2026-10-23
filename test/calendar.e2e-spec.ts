@@ -226,4 +226,65 @@ describeE2E('Calendário de consistência (e2e)', () => {
     const empty = await calendar(user.auth, SP_SEPTEMBER).expect(200);
     expect(empty.body).toMatchObject({ data: [], firstSessionAt: null });
   });
+  it('histórico organizado pelo início, como o calendário (treino que atravessa a meia-noite)', async () => {
+    const user = await signUp('cal-historico');
+    // São Paulo (UTC−3). A: domingo 18/10 23:30 → segunda 01:30. B: segunda 00:10 → 00:40.
+    const a = await completed(
+      user.auth,
+      'A — virada',
+      '2026-10-19T02:30:00.000Z',
+      120,
+    );
+    const b = await completed(
+      user.auth,
+      'B — madrugada',
+      '2026-10-19T03:10:00.000Z',
+      30,
+    );
+    const sameDay = await completed(
+      user.auth,
+      'C — mesmo dia',
+      '2026-10-20T22:00:00.000Z',
+      45,
+    );
+    const september = await completed(
+      user.auth,
+      'D — setembro',
+      '2026-09-10T21:00:00.000Z',
+    );
+
+    const history = await api().get('/sessions').set(user.auth).expect(200);
+    const rows = history.body.data as {
+      id: string;
+      startedAt: string;
+      finishedAt: string;
+    }[];
+    // Por início (mais recente primeiro): C, B, A, D. Pelo término seria C, A, B, D.
+    expect(rows.map((s) => s.id)).toEqual([sameDay, b, a, september]);
+    // finishedAt continua disponível (horário de término e duração).
+    expect(rows[2]).toMatchObject({
+      startedAt: '2026-10-19T02:30:00.000Z',
+      finishedAt: '2026-10-19T04:30:00.000Z',
+      durationSeconds: 7200,
+    });
+
+    // Paginação estável com a nova ordem: sem repetir nem pular.
+    const pages = [];
+    for (let page = 1; page <= 4; page += 1) {
+      const res = await api()
+        .get('/sessions')
+        .query({ page, limit: 1 })
+        .set(user.auth)
+        .expect(200);
+      pages.push(res.body.data[0].id as string);
+    }
+    expect(pages).toEqual([sameDay, b, a, september]);
+
+    // Calendário: o domingo 18/10 (dia local de São Paulo) contém A, e não B.
+    const sunday = await calendar(user.auth, {
+      from: '2026-10-18T03:00:00.000Z',
+      to: '2026-10-19T03:00:00.000Z',
+    }).expect(200);
+    expect(sunday.body.data.map((s: { id: string }) => s.id)).toEqual([a]);
+  });
 });

@@ -13,6 +13,8 @@ import {
   monthNavigation,
   monthTitle,
   rangeFor,
+  sessionDateLabel,
+  sessionDayKey,
   weekDays,
   weekNavigation,
   type CalendarSession,
@@ -173,5 +175,46 @@ describe('calendário: navegação respeita o histórico e não vai para o futur
     assert.deepEqual(monthNavigation({ year: 2026, month: 9 }, today, first), { canGoBack: true, canGoForward: false });
     assert.deepEqual(monthNavigation({ year: 2026, month: 6 }, today, first), { canGoBack: false, canGoForward: true });
     assert.deepEqual(monthNavigation({ year: 2026, month: 9 }, today, null), { canGoBack: false, canGoForward: false });
+  });
+});
+
+describe('mesma data no calendário e no histórico (data local de início)', () => {
+  // Domingo 18/10/2026 23:30 em São Paulo (= segunda 02:30 UTC), terminando segunda 00:20.
+  const crossMidnight = { ...session('virada', '2026-10-19T02:30:00.000Z'), finishedAt: '2026-10-19T03:20:00.000Z' };
+  const sameDay = { ...session('tarde', '2026-10-20T19:00:00.000Z'), finishedAt: '2026-10-20T20:00:00.000Z' };
+  const september = { ...session('setembro', '2026-09-10T21:00:00.000Z'), finishedAt: '2026-09-10T22:00:00.000Z' };
+
+  it('treino que atravessa a meia-noite fica no domingo nas duas telas', () => {
+    inTimeZone('America/Sao_Paulo', () => {
+      assert.equal(sessionDayKey(crossMidnight), '2026-10-18');
+      assert.equal(sessionDateLabel(crossMidnight), 'dom., 18 de out.');
+      assert.deepEqual([...groupByDay([crossMidnight]).keys()], ['2026-10-18']);
+      // A data de término é segunda: ela NÃO define o dia.
+      assert.equal(dayKey(new Date(crossMidnight.finishedAt!)), '2026-10-19');
+    });
+  });
+
+  it('início e fim no mesmo dia, e meses anteriores', () => {
+    inTimeZone('America/Sao_Paulo', () => {
+      assert.equal(sessionDateLabel(sameDay), 'ter., 20 de out.');
+      assert.equal(sessionDateLabel(september), 'qui., 10 de set.');
+      assert.deepEqual([...groupByDay([september, sameDay]).keys()], ['2026-09-10', '2026-10-20']);
+    });
+  });
+
+  it('em qualquer fuso, histórico e calendário concordam entre si', () => {
+    for (const tz of ['America/Sao_Paulo', 'Asia/Tokyo', 'UTC', 'America/New_York', 'Pacific/Auckland']) {
+      inTimeZone(tz, () => {
+        for (const s of [crossMidnight, sameDay, september]) {
+          const [calendarDay] = [...groupByDay([s]).keys()];
+          assert.equal(sessionDayKey(s), calendarDay, `${tz} ${s.id}`);
+          const label = sessionDateLabel(s);
+          const expected = new Date(s.startedAt).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
+          assert.equal(label, expected, `${tz} ${s.id}`);
+        }
+      });
+    }
+    // Mudança de fuso: o mesmo treino é domingo em São Paulo e segunda em Tóquio (nas duas telas).
+    inTimeZone('Asia/Tokyo', () => assert.equal(sessionDateLabel(crossMidnight), 'seg., 19 de out.'));
   });
 });

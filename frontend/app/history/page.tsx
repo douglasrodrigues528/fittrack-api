@@ -8,6 +8,7 @@ import { api } from '../../services/api';
 import { TOKEN_KEY } from '../../lib/use-workout-draft';
 import { SessionExercises } from '../../components/SessionDetails';
 import TrainingCalendar from '../../components/TrainingCalendar';
+import { sessionDateLabel } from '../../lib/calendar';
 import { formatDuration, type SetType } from '../../lib/session';
 import styles from './history.module.css';
 
@@ -27,6 +28,8 @@ interface HistorySession {
   id: string;
   origin?: 'planned' | 'free';
   title: string;
+  /** Define o dia do treino (mesma regra do calendário). */
+  startedAt: string;
   finishedAt: string;
   durationSeconds: number;
   totalSets: number;
@@ -175,13 +178,7 @@ function HistoryList() {
                     {session.origin === 'planned' ? 'Planejado' : 'Livre'}
                   </span>
                 </strong>
-                <small>
-                  {new Date(session.finishedAt).toLocaleDateString('pt-BR', {
-                    weekday: 'short',
-                    day: '2-digit',
-                    month: 'short',
-                  })}
-                </small>
+                <small>{sessionDateLabel(session)}</small>
               </span>
               <span className={styles.metrics}>
                 <span>⏱ {formatDuration(session.durationSeconds)}</span>

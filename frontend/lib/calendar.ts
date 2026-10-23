@@ -77,12 +77,30 @@ export function rangeFor(days: CalendarDay[]): { from: string; to: string } {
   };
 }
 
+/**
+ * Regra única do dia de um treino, usada no calendário e no histórico: a data LOCAL de início
+ * (`startedAt`). Um treino das 23:30 de domingo que termina na segunda é de domingo.
+ * `finishedAt` serve só para o horário de término e a duração.
+ */
+export function sessionDayKey(session: { startedAt: string }): DayKey {
+  return dayKey(new Date(session.startedAt));
+}
+
+/** Data do treino como exibida no histórico ("dom., 18 de out."), pela mesma regra. */
+export function sessionDateLabel(session: { startedAt: string }): string {
+  return fromDayKey(sessionDayKey(session)).toLocaleDateString('pt-BR', {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+  });
+}
+
 /** Agrupa as sessões pelo dia LOCAL em que começaram, em ordem de horário. */
 export function groupByDay(sessions: CalendarSession[]): Map<DayKey, CalendarSession[]> {
   const groups = new Map<DayKey, CalendarSession[]>();
   const ordered = [...sessions].sort((a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt));
   for (const session of ordered) {
-    const key = dayKey(new Date(session.startedAt));
+    const key = sessionDayKey(session);
     const list = groups.get(key);
     if (list) list.push(session);
     else groups.set(key, [session]);

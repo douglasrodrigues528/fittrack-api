@@ -413,12 +413,15 @@ export class SessionsService {
     };
   }
 
-  /** Histórico: somente sessões concluídas, da mais recente para a mais antiga. */
+  /**
+   * Histórico: somente sessões concluídas, da mais recente para a mais antiga pelo INÍCIO
+   * (`startedAt`), a mesma referência de data do calendário. Desempate estável para a paginação.
+   */
   async findAll(userId: string, page = 1, limit = 20) {
     const [sessions, total] = await this.sessionsRepository.findAndCount({
       where: { userId, status: 'completed' },
       relations: { sets: true },
-      order: { finishedAt: 'DESC' },
+      order: { startedAt: 'DESC', createdAt: 'DESC', id: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
     });
