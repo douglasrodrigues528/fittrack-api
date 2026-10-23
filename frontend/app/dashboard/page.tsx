@@ -1,6 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type FormEvent,
+  type KeyboardEvent,
+} from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { isAxiosError } from 'axios';
@@ -80,6 +88,18 @@ async function fetchPerformance(): Promise<PerformanceMap> {
     return {};
   }
 }
+
+/** Fragmento atual da URL (#...), acompanhando navegação com âncora sem recarregar a página. */
+function subscribeHash(listener: () => void) {
+  window.addEventListener('hashchange', listener);
+  window.addEventListener('popstate', listener);
+  return () => {
+    window.removeEventListener('hashchange', listener);
+    window.removeEventListener('popstate', listener);
+  };
+}
+const readHash = () => window.location.hash;
+const serverHash = () => '';
 
 function isLimitError(error: unknown): boolean {
   return isAxiosError(error) && error.response?.status === 409 && error.response.data?.code === 'WORKOUT_LIMIT_REACHED';
@@ -190,6 +210,12 @@ export default function DashboardPage() {
   const [journeyPending, setJourneyPending] = useState(true);
   const [choosing, setChoosing] = useState<OnboardingChoice | null>(null);
   const [guideOpen, setGuideOpen] = useState(false);
+  // Formulário de rotina fechado por padrão. Em 'auto' ele só aparece se já houver um rascunho
+  // ou se a página foi aberta em #workout-form (links do catálogo e da tela de treino).
+  const [formMode, setFormMode] = useState<'auto' | 'open' | 'closed'>('auto');
+  const formLinkRequested = useSyncExternalStore(subscribeHash, readHash, serverHash) === '#workout-form';
+  // Rotinas com a lista de exercícios expandida (recolhidas por padrão).
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   const loadWorkouts = useCallback(async () => {
@@ -245,10 +271,27 @@ export default function DashboardPage() {
     };
   }, [router]);
 
+  // Nova navegação para #workout-form com a página já aberta: é um pedido explícito, reabre o formulário.
+  useEffect(() => {
+    const onHashChange = () => {
+      if (window.location.hash === '#workout-form') setFormMode('open');
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  // Chegou por um link #workout-form: rola até o formulário quando a página termina de carregar.
+  useEffect(() => {
+    if (formLinkRequested && !loadingWorkouts && !journeyPending) {
+      document.getElementById('workout-form')?.scrollIntoView({ block: 'start' });
+    }
+  }, [formLinkRequested, loadingWorkouts, journeyPending]);
+
   const workoutLimit = journey?.plannedWorkouts.limit ?? DEFAULT_WORKOUT_LIMIT;
   const quota = loadingWorkouts ? null : quotaFor(workouts.length, workoutLimit);
   const atLimit = quota !== null && quota.remaining === 0 && draft.editingId === null;
   const showWelcome = !loadingWorkouts && shouldShowWelcome(journey, workouts.length > 0, live !== null);
+  const formOpen = formMode === 'open' || (formMode === 'auto' && (!isDraftEmpty(draft) || formLinkRequested));
 
   const totalExercises = workouts.reduce((total, workout) => total + (workout.exercises?.length ?? 0), 0);
   // Séries de referência (último treino concluído; sem histórico, as planejadas), como nos cartões.
@@ -273,6 +316,15 @@ export default function DashboardPage() {
     }
   }
 
+  function toggleExpanded(id: string) {
+    setExpanded((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   function focusWorkoutForm() {
     // Espera o formulário aparecer (ao sair das boas-vindas) antes de rolar e focar.
     window.setTimeout(() => {
@@ -288,6 +340,7 @@ export default function DashboardPage() {
       setChoosing(null);
       setGuideOpen(true);
     }
+    setFormMode('open');
     focusWorkoutForm();
   }
 
@@ -323,6 +376,7 @@ export default function DashboardPage() {
     }
     discardDraft();
     setBanner(null);
+    setFormMode('closed');
   }
 
   function handleAddManual() {
@@ -402,6 +456,8 @@ export default function DashboardPage() {
       // Só descarta o rascunho depois que a API confirmou o salvamento.
       const wasEditing = current.editingId !== null;
       discardDraft();
+      // Salvo: o formulário fecha e a rotina aparece na lista, com o aviso de sucesso acima dela.
+      setFormMode('closed');
       setBanner({
         kind: 'success',
         lines: [wasEditing ? 'Treino atualizado com sucesso!' : 'Treino cadastrado com sucesso!'],
@@ -437,7 +493,8 @@ export default function DashboardPage() {
       setSetErrors({});
     }
     setBanner(null);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setFormMode('open');
+    focusWorkoutForm();
   }
 
   async function handleDeleteWorkout(id: string) {
@@ -539,6 +596,436 @@ export default function DashboardPage() {
         </Link>
       )}
 
+      {/* Avisos (salvo, excluído, erro ao carregar) ficam visíveis mesmo com o formulário fechado. */}
+      {banner && !formOpen && (
+        <div
+          className={banner.kind === 'error' ? ui.bannerError : ui.bannerSuccess}
+          role={banner.kind === 'error' ? 'alert' : 'status'}
+        >
+          {banner.lines.map((line) => (
+            <p key={line} className={styles.bannerLine}>
+              {line}
+            </p>
+          ))}
+        </div>
+      )}
+
+      <section aria-labelledby="my-workouts" className={styles.routines}>
+        <div className={styles.listHeader}>
+          <h2 id="my-workouts" className={styles.listTitle}>
+            Meus treinos{quota ? ` — ${quota.used} de ${quota.limit}` : ''}
+          </h2>
+          {workouts.length > 0 && (
+            <button
+              type="button"
+              className={cx(ui.btn, styles.newRoutineBtn)}
+              onClick={() => void handleCreateRoutine()}
+              disabled={atLimit && isDraftEmpty(draft)}
+              title={atLimit ? 'Limite atingido: exclua ou edite um treino para liberar espaço.' : undefined}
+            >
+              {!isDraftEmpty(draft) && !draft.editingId ? 'Continuar rascunho' : '+ Novo treino'}
+            </button>
+          )}
+        </div>
+
+        {loadingWorkouts ? (
+          <p className={ui.loadingText} role="status">
+            Carregando treinos…
+          </p>
+        ) : workouts.length === 0 ? (
+          <div className={cx(ui.card, styles.emptyRoutines)}>
+            <p className={styles.emptyTitle}>Você ainda não tem treinos planejados.</p>
+            <p className={styles.emptyText}>
+              Monte o primeiro com os exercícios que costuma fazer — ele fica salvo para iniciar com um toque.
+            </p>
+            <div className={styles.emptyActions}>
+              <button type="button" className={cx(ui.btn, ui.btnPrimary)} onClick={() => void handleCreateRoutine()}>
+                {isDraftEmpty(draft) ? 'Criar primeiro treino' : 'Continuar rascunho'}
+              </button>
+              <button type="button" className={cx(ui.btn, ui.btnSecondary)} onClick={() => void handleStartFree()}>
+                Começar treino livre
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className={styles.cards}>
+            {workouts.map((workout) => {
+              const exercises = workout.exercises ?? [];
+              const references = exercises.map((exercise, index) =>
+                referenceSetsFor(exercise, index, performance[workout.id]),
+              );
+              const setCount = references.reduce((total, reference) => total + reference.sets.length, 0);
+              const lastDone = references
+                .map((reference) => reference.performedAt)
+                .filter((date): date is string => date !== null)
+                .sort()
+                .pop();
+              const isOpen = expanded.has(workout.id);
+              const detailsId = `workout-details-${workout.id}`;
+              return (
+                <article key={workout.id} className={cx(ui.card, styles.card)}>
+                  <div className={styles.cardTitleBlock}>
+                    <h3>{workout.title}</h3>
+                    <p className={styles.cardSummary}>
+                      {exercises.length} {exercises.length === 1 ? 'exercício' : 'exercícios'} · {setCount}{' '}
+                      {setCount === 1 ? 'série' : 'séries'}
+                      {lastDone && ` · último treino em ${new Date(lastDone).toLocaleDateString('pt-BR')}`}
+                    </p>
+                    {workout.weekdays && workout.weekdays.length > 0 && (
+                      <p className={styles.cardDays}>📅 {formatWeekdays(workout.weekdays)}</p>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    className={cx(ui.btn, ui.btnPrimary, ui.btnBlock, styles.startBtn)}
+                    onClick={() => void handleStartWorkout(workout)}
+                  >
+                    ▶ Iniciar treino
+                  </button>
+
+                  <div className={styles.cardTools}>
+                    <button
+                      type="button"
+                      className={cx(ui.btn, ui.btnSecondary)}
+                      aria-expanded={isOpen}
+                      aria-controls={detailsId}
+                      onClick={() => toggleExpanded(workout.id)}
+                      disabled={exercises.length === 0}
+                    >
+                      {isOpen ? 'Ocultar exercícios' : 'Ver exercícios'}
+                    </button>
+
+                    <button type="button" className={cx(ui.btn, ui.btnWarning)} onClick={() => handleEditWorkout(workout)}>
+                      Editar
+                    </button>
+
+                    <button
+                      type="button"
+                      className={cx(ui.btn, ui.btnDanger)}
+                      onClick={() => handleDeleteWorkout(workout.id)}
+                    >
+                      Excluir
+                    </button>
+                  </div>
+
+                  {isOpen && (
+                    <div id={detailsId} className={styles.cardDetails}>
+                      {workout.description && <p className={styles.cardDescription}>{workout.description}</p>}
+                    {workout.exercises && workout.exercises.length > 0 && (
+                      <div className={styles.exerciseList}>
+                        {workout.exercises.map((exercise, index) => {
+                          const reference = referenceSetsFor(exercise, index, performance[workout.id]);
+                          return (
+                            <div key={`${exercise.exerciseId ?? exercise.name}-${index}`} className={styles.exerciseCard}>
+                              <h4>💪 {exercise.name}</h4>
+                              <p className={styles.setSource}>
+                                {reference.source === 'last_session' && reference.performedAt
+                                  ? `Último treino · ${new Date(reference.performedAt).toLocaleDateString('pt-BR')}`
+                                  : 'Planejado (ainda sem treino concluído)'}
+                              </p>
+
+                              <table className={styles.setTable}>
+                                <thead>
+                                  <tr>
+                                    <th scope="col">Série</th>
+                                    <th scope="col">Peso</th>
+                                    <th scope="col">Reps</th>
+                                  </tr>
+                                </thead>
+
+                                <tbody>
+                                  {reference.sets.map((set, setIndex) => (
+                                    <tr key={`${set.weight}-${set.reps}-${setIndex}`}>
+                                      <td>
+                                        {setIndex + 1}
+                                        {set.type !== 'normal' && set.type in SET_TYPE_LABEL && (
+                                          <small> · {SET_TYPE_LABEL[set.type as SetType]}</small>
+                                        )}
+                                      </td>
+                                      <td>{set.weight}kg</td>
+                                      <td>{set.reps}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                      <small className={styles.createdAt}>
+                        Criado em {new Date(workout.createdAt).toLocaleDateString('pt-BR')}
+                      </small>
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {formOpen && (
+        <section id="workout-form" className={cx(ui.card, styles.formCard)} aria-labelledby="form-title">
+          <div className={styles.formHeader}>
+            <button
+              type="button"
+              className={cx(ui.btn, ui.btnSecondary, styles.closeFormBtn)}
+              onClick={() => setFormMode('closed')}
+              aria-label="Fechar formulário (o rascunho continua guardado)"
+            >
+              Fechar
+            </button>
+          </div>
+          <h2 id="form-title" className={ui.sectionTitle}>
+            {draft.editingId ? 'Editar treino' : 'Novo treino planejado'}
+            {!draft.editingId && quota && (
+              <span className={styles.slotTag}>
+                {quota.remaining > 0
+                  ? `${quota.remaining} ${quota.remaining === 1 ? 'vaga livre' : 'vagas livres'}`
+                  : 'sem vagas'}
+              </span>
+            )}
+          </h2>
+
+          {atLimit && (
+            <div className={ui.bannerInfo} role="status">
+              Você já tem {workoutLimit} de {workoutLimit} treinos planejados. Para criar outro, exclua um treino que
+              não usa mais ou edite um existente na lista abaixo. Treinos livres e o histórico não contam neste limite.
+            </div>
+          )}
+
+          {!draft.editingId && (guideOpen || (quota !== null && quota.used === 0)) && (
+            <ol className={styles.guide} aria-label="Como montar seu treino">
+              <li>Dê um nome, por exemplo “Treino A — Peito e costas”.</li>
+              <li>Adicione exercícios do catálogo ou digite o nome de um exercício.</li>
+              <li>Informe peso e repetições de cada série.</li>
+              <li>Salve. Pode começar com um treino só; os dias da semana são opcionais.</li>
+            </ol>
+          )}
+
+          {banner && (
+            <div
+              className={banner.kind === 'error' ? ui.bannerError : ui.bannerSuccess}
+              role={banner.kind === 'error' ? 'alert' : 'status'}
+            >
+              {banner.lines.map((line) => (
+                <p key={line} className={styles.bannerLine}>
+                  {line}
+                </p>
+              ))}
+            </div>
+          )}
+
+          <form onSubmit={handleSaveWorkout} className={styles.form}>
+            <label className={ui.fieldLabel}>
+              Título do treino
+              <input
+                ref={titleInputRef}
+                className={ui.control}
+                placeholder="Ex.: Treino A — Peito e tríceps"
+                value={draft.title}
+                onChange={(event) => draftStore.update((current) => ({ ...current, title: event.target.value }))}
+              />
+            </label>
+
+            <label className={ui.fieldLabel}>
+              Descrição
+              <textarea
+                className={cx(ui.control, ui.controlTextarea)}
+                placeholder="Opcional"
+                value={draft.description}
+                onChange={(event) =>
+                  draftStore.update((current) => ({ ...current, description: event.target.value }))
+                }
+              />
+            </label>
+
+            <fieldset className={styles.weekdays}>
+              <legend className={ui.fieldLabel}>Dias da semana (opcional)</legend>
+              <div className={styles.weekdayChips}>
+                {WEEKDAY_LABELS.map((label, day) => {
+                  const selected = draft.weekdays.includes(day);
+                  return (
+                    <button
+                      key={label}
+                      type="button"
+                      className={cx(styles.weekdayChip, selected && styles.weekdayChipOn)}
+                      aria-pressed={selected}
+                      aria-label={WEEKDAY_NAMES[day]}
+                      onClick={() => draftStore.update((current) => toggleWeekday(current, day))}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+
+            <div className={styles.exerciseBox}>
+              <h3 className={styles.boxTitle}>Adicionar exercício</h3>
+              <p className={styles.hint}>
+                Escolha no catálogo (com imagens e instruções) ou digite um exercício próprio.
+              </p>
+
+              <Link href="/exercises" className={cx(ui.btn, ui.btnPrimary, styles.catalogBtn)}>
+                📚 Escolher do catálogo
+              </Link>
+
+              <div className={styles.manualRow}>
+                <input
+                  className={ui.control}
+                  placeholder="Ou digite o nome de um exercício"
+                  aria-label="Nome do exercício"
+                  value={manualName}
+                  onChange={(event) => {
+                    setManualName(event.target.value);
+                    setManualError('');
+                  }}
+                  onKeyDown={handleManualKey}
+                />
+                <button type="button" className={cx(ui.btn, ui.btnSecondary)} onClick={handleAddManual}>
+                  + Adicionar
+                </button>
+              </div>
+              {manualError && <p className={styles.fieldError}>{manualError}</p>}
+            </div>
+
+            <div className={styles.exerciseBox} id="exercise-list">
+              <h3 className={styles.boxTitle}>Exercícios do treino ({draft.exercises.length})</h3>
+
+              {draft.exercises.length === 0 && (
+                <p className={styles.hint}>Nenhum exercício ainda. Escolha um no catálogo ou adicione manualmente.</p>
+              )}
+
+              {draft.exercises.map((exercise, exerciseIndex) => {
+                const input = setInputs[exercise.uid] ?? { weight: '', reps: '' };
+                return (
+                  <div key={exercise.uid} className={styles.draftExercise}>
+                    <div className={styles.draftExerciseHeader}>
+                      <strong className={styles.exerciseName}>
+                        {exerciseIndex + 1}. {exercise.name}
+                      </strong>
+                      <div className={styles.iconButtons}>
+                        <button
+                          type="button"
+                          className={cx(ui.btn, ui.btnSecondary, styles.iconBtn)}
+                          aria-label={`Mover ${exercise.name} para cima`}
+                          disabled={exerciseIndex === 0}
+                          onClick={() => draftStore.update((current) => moveExercise(current, exercise.uid, -1))}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          className={cx(ui.btn, ui.btnSecondary, styles.iconBtn)}
+                          aria-label={`Mover ${exercise.name} para baixo`}
+                          disabled={exerciseIndex === draft.exercises.length - 1}
+                          onClick={() => draftStore.update((current) => moveExercise(current, exercise.uid, 1))}
+                        >
+                          ↓
+                        </button>
+                        <button
+                          type="button"
+                          className={cx(ui.btn, ui.btnDanger, styles.compactBtn)}
+                          aria-label={`Remover ${exercise.name} do treino`}
+                          onClick={() => draftStore.update((current) => removeExercise(current, exercise.uid))}
+                        >
+                          Remover
+                        </button>
+                      </div>
+                    </div>
+
+                    {exercise.sets.length === 0 ? (
+                      <p className={styles.warning}>Sem séries. Adicione pelo menos uma abaixo para poder salvar.</p>
+                    ) : (
+                      exercise.sets.map((set, setIndex) => (
+                        <SetRow
+                          key={`${exercise.uid}-${setIndex}-${set.weight}-${set.reps}`}
+                          index={setIndex}
+                          set={set}
+                          onChange={(next) =>
+                            draftStore.update((current) => updateSet(current, exercise.uid, setIndex, next))
+                          }
+                          onRemove={() => draftStore.update((current) => removeSet(current, exercise.uid, setIndex))}
+                        />
+                      ))
+                    )}
+
+                    <div className={styles.addSetRow}>
+                      <span className={styles.unitField}>
+                        <input
+                          className={cx(ui.control, ui.controlNumber, styles.unitInput)}
+                          aria-label={`Peso para ${exercise.name}`}
+                          placeholder="Peso"
+                          type="number"
+                          inputMode="decimal"
+                          min="0"
+                          step="0.5"
+                          value={input.weight}
+                          onChange={(event) => updateSetInput(exercise.uid, 'weight', event.target.value)}
+                          onKeyDown={(event) => handleSetInputKey(event, exercise.uid)}
+                        />
+                        <span className={styles.unit} aria-hidden="true">
+                          kg
+                        </span>
+                      </span>
+                      <span className={styles.unitField}>
+                        <input
+                          className={cx(ui.control, ui.controlNumber, styles.unitInput)}
+                          aria-label={`Repetições para ${exercise.name}`}
+                          placeholder="Repetições"
+                          type="number"
+                          inputMode="numeric"
+                          min="1"
+                          step="1"
+                          value={input.reps}
+                          onChange={(event) => updateSetInput(exercise.uid, 'reps', event.target.value)}
+                          onKeyDown={(event) => handleSetInputKey(event, exercise.uid)}
+                        />
+                        <span className={styles.unit} aria-hidden="true">
+                          reps
+                        </span>
+                      </span>
+                      <button
+                        type="button"
+                        className={cx(ui.btn, ui.btnSecondary, styles.addSetBtn)}
+                        onClick={() => handleAddSet(exercise.uid)}
+                      >
+                        + Série
+                      </button>
+                    </div>
+                    {setErrors[exercise.uid] && <p className={styles.fieldError}>{setErrors[exercise.uid]}</p>}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className={styles.formActions}>
+              <button type="submit" className={cx(ui.btn, ui.btnPrimary)} disabled={saving || atLimit}>
+                {saving
+                  ? 'Salvando...'
+                  : draft.editingId
+                    ? 'Atualizar treino'
+                    : atLimit
+                      ? 'Limite de treinos atingido'
+                      : 'Salvar treino'}
+              </button>
+
+              {!isDraftEmpty(draft) && (
+                <button type="button" className={cx(ui.btn, ui.btnSecondary)} onClick={handleCancel} disabled={saving}>
+                  {draft.editingId ? 'Cancelar edição' : 'Descartar rascunho'}
+                </button>
+              )}
+            </div>
+          </form>
+        </section>
+      )}
+
+      {/* Dias realmente treinados nesta semana (sessões concluídas). */}
+      <TrainingCalendar mode="week" />
+
       <section aria-label="Começar">
         <StartChoices
           variant="compact"
@@ -549,9 +1036,6 @@ export default function DashboardPage() {
           onStartFree={() => void handleStartFree()}
         />
       </section>
-
-      {/* Dias realmente treinados nesta semana (sessões concluídas). */}
-      <TrainingCalendar mode="week" />
 
       <section className={styles.stats} aria-label="Resumo dos treinos">
         <div className={cx(ui.card, styles.statCard)}>
@@ -568,350 +1052,6 @@ export default function DashboardPage() {
           <strong>{totalSets}</strong>
           <span>Séries</span>
         </div>
-      </section>
-
-      <section id="workout-form" className={cx(ui.card, styles.formCard)} aria-labelledby="form-title">
-        <h2 id="form-title" className={ui.sectionTitle}>
-          {draft.editingId ? 'Editar treino' : 'Novo treino planejado'}
-          {!draft.editingId && quota && (
-            <span className={styles.slotTag}>
-              {quota.remaining > 0
-                ? `${quota.remaining} ${quota.remaining === 1 ? 'vaga livre' : 'vagas livres'}`
-                : 'sem vagas'}
-            </span>
-          )}
-        </h2>
-
-        {atLimit && (
-          <div className={ui.bannerInfo} role="status">
-            Você já tem {workoutLimit} de {workoutLimit} treinos planejados. Para criar outro, exclua um treino que
-            não usa mais ou edite um existente na lista abaixo. Treinos livres e o histórico não contam neste limite.
-          </div>
-        )}
-
-        {!draft.editingId && (guideOpen || (quota !== null && quota.used === 0)) && (
-          <ol className={styles.guide} aria-label="Como montar seu treino">
-            <li>Dê um nome, por exemplo “Treino A — Peito e costas”.</li>
-            <li>Adicione exercícios do catálogo ou digite o nome de um exercício.</li>
-            <li>Informe peso e repetições de cada série.</li>
-            <li>Salve. Pode começar com um treino só; os dias da semana são opcionais.</li>
-          </ol>
-        )}
-
-        {banner && (
-          <div
-            className={banner.kind === 'error' ? ui.bannerError : ui.bannerSuccess}
-            role={banner.kind === 'error' ? 'alert' : 'status'}
-          >
-            {banner.lines.map((line) => (
-              <p key={line} className={styles.bannerLine}>
-                {line}
-              </p>
-            ))}
-          </div>
-        )}
-
-        <form onSubmit={handleSaveWorkout} className={styles.form}>
-          <label className={ui.fieldLabel}>
-            Título do treino
-            <input
-              ref={titleInputRef}
-              className={ui.control}
-              placeholder="Ex.: Treino A — Peito e tríceps"
-              value={draft.title}
-              onChange={(event) => draftStore.update((current) => ({ ...current, title: event.target.value }))}
-            />
-          </label>
-
-          <label className={ui.fieldLabel}>
-            Descrição
-            <textarea
-              className={cx(ui.control, ui.controlTextarea)}
-              placeholder="Opcional"
-              value={draft.description}
-              onChange={(event) =>
-                draftStore.update((current) => ({ ...current, description: event.target.value }))
-              }
-            />
-          </label>
-
-          <fieldset className={styles.weekdays}>
-            <legend className={ui.fieldLabel}>Dias da semana (opcional)</legend>
-            <div className={styles.weekdayChips}>
-              {WEEKDAY_LABELS.map((label, day) => {
-                const selected = draft.weekdays.includes(day);
-                return (
-                  <button
-                    key={label}
-                    type="button"
-                    className={cx(styles.weekdayChip, selected && styles.weekdayChipOn)}
-                    aria-pressed={selected}
-                    aria-label={WEEKDAY_NAMES[day]}
-                    onClick={() => draftStore.update((current) => toggleWeekday(current, day))}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          </fieldset>
-
-          <div className={styles.exerciseBox}>
-            <h3 className={styles.boxTitle}>Adicionar exercício</h3>
-            <p className={styles.hint}>
-              Escolha no catálogo (com imagens e instruções) ou digite um exercício próprio.
-            </p>
-
-            <Link href="/exercises" className={cx(ui.btn, ui.btnPrimary, styles.catalogBtn)}>
-              📚 Escolher do catálogo
-            </Link>
-
-            <div className={styles.manualRow}>
-              <input
-                className={ui.control}
-                placeholder="Ou digite o nome de um exercício"
-                aria-label="Nome do exercício"
-                value={manualName}
-                onChange={(event) => {
-                  setManualName(event.target.value);
-                  setManualError('');
-                }}
-                onKeyDown={handleManualKey}
-              />
-              <button type="button" className={cx(ui.btn, ui.btnSecondary)} onClick={handleAddManual}>
-                + Adicionar
-              </button>
-            </div>
-            {manualError && <p className={styles.fieldError}>{manualError}</p>}
-          </div>
-
-          <div className={styles.exerciseBox} id="exercise-list">
-            <h3 className={styles.boxTitle}>Exercícios do treino ({draft.exercises.length})</h3>
-
-            {draft.exercises.length === 0 && (
-              <p className={styles.hint}>Nenhum exercício ainda. Escolha um no catálogo ou adicione manualmente.</p>
-            )}
-
-            {draft.exercises.map((exercise, exerciseIndex) => {
-              const input = setInputs[exercise.uid] ?? { weight: '', reps: '' };
-              return (
-                <div key={exercise.uid} className={styles.draftExercise}>
-                  <div className={styles.draftExerciseHeader}>
-                    <strong className={styles.exerciseName}>
-                      {exerciseIndex + 1}. {exercise.name}
-                    </strong>
-                    <div className={styles.iconButtons}>
-                      <button
-                        type="button"
-                        className={cx(ui.btn, ui.btnSecondary, styles.iconBtn)}
-                        aria-label={`Mover ${exercise.name} para cima`}
-                        disabled={exerciseIndex === 0}
-                        onClick={() => draftStore.update((current) => moveExercise(current, exercise.uid, -1))}
-                      >
-                        ↑
-                      </button>
-                      <button
-                        type="button"
-                        className={cx(ui.btn, ui.btnSecondary, styles.iconBtn)}
-                        aria-label={`Mover ${exercise.name} para baixo`}
-                        disabled={exerciseIndex === draft.exercises.length - 1}
-                        onClick={() => draftStore.update((current) => moveExercise(current, exercise.uid, 1))}
-                      >
-                        ↓
-                      </button>
-                      <button
-                        type="button"
-                        className={cx(ui.btn, ui.btnDanger, styles.compactBtn)}
-                        aria-label={`Remover ${exercise.name} do treino`}
-                        onClick={() => draftStore.update((current) => removeExercise(current, exercise.uid))}
-                      >
-                        Remover
-                      </button>
-                    </div>
-                  </div>
-
-                  {exercise.sets.length === 0 ? (
-                    <p className={styles.warning}>Sem séries. Adicione pelo menos uma abaixo para poder salvar.</p>
-                  ) : (
-                    exercise.sets.map((set, setIndex) => (
-                      <SetRow
-                        key={`${exercise.uid}-${setIndex}-${set.weight}-${set.reps}`}
-                        index={setIndex}
-                        set={set}
-                        onChange={(next) =>
-                          draftStore.update((current) => updateSet(current, exercise.uid, setIndex, next))
-                        }
-                        onRemove={() => draftStore.update((current) => removeSet(current, exercise.uid, setIndex))}
-                      />
-                    ))
-                  )}
-
-                  <div className={styles.addSetRow}>
-                    <span className={styles.unitField}>
-                      <input
-                        className={cx(ui.control, ui.controlNumber, styles.unitInput)}
-                        aria-label={`Peso para ${exercise.name}`}
-                        placeholder="Peso"
-                        type="number"
-                        inputMode="decimal"
-                        min="0"
-                        step="0.5"
-                        value={input.weight}
-                        onChange={(event) => updateSetInput(exercise.uid, 'weight', event.target.value)}
-                        onKeyDown={(event) => handleSetInputKey(event, exercise.uid)}
-                      />
-                      <span className={styles.unit} aria-hidden="true">
-                        kg
-                      </span>
-                    </span>
-                    <span className={styles.unitField}>
-                      <input
-                        className={cx(ui.control, ui.controlNumber, styles.unitInput)}
-                        aria-label={`Repetições para ${exercise.name}`}
-                        placeholder="Repetições"
-                        type="number"
-                        inputMode="numeric"
-                        min="1"
-                        step="1"
-                        value={input.reps}
-                        onChange={(event) => updateSetInput(exercise.uid, 'reps', event.target.value)}
-                        onKeyDown={(event) => handleSetInputKey(event, exercise.uid)}
-                      />
-                      <span className={styles.unit} aria-hidden="true">
-                        reps
-                      </span>
-                    </span>
-                    <button
-                      type="button"
-                      className={cx(ui.btn, ui.btnSecondary, styles.addSetBtn)}
-                      onClick={() => handleAddSet(exercise.uid)}
-                    >
-                      + Série
-                    </button>
-                  </div>
-                  {setErrors[exercise.uid] && <p className={styles.fieldError}>{setErrors[exercise.uid]}</p>}
-                </div>
-              );
-            })}
-          </div>
-
-          <div className={styles.formActions}>
-            <button type="submit" className={cx(ui.btn, ui.btnPrimary)} disabled={saving || atLimit}>
-              {saving
-                ? 'Salvando...'
-                : draft.editingId
-                  ? 'Atualizar treino'
-                  : atLimit
-                    ? 'Limite de treinos atingido'
-                    : 'Salvar treino'}
-            </button>
-
-            {!isDraftEmpty(draft) && (
-              <button type="button" className={cx(ui.btn, ui.btnSecondary)} onClick={handleCancel} disabled={saving}>
-                {draft.editingId ? 'Cancelar edição' : 'Descartar rascunho'}
-              </button>
-            )}
-          </div>
-        </form>
-      </section>
-
-      <section aria-labelledby="my-workouts">
-        <h2 id="my-workouts" className={styles.listTitle}>
-          Meus treinos{quota ? ` — ${quota.used} de ${quota.limit}` : ''}
-        </h2>
-
-        {loadingWorkouts ? (
-          <p className={ui.loadingText} role="status">
-            Carregando treinos…
-          </p>
-        ) : workouts.length === 0 ? (
-          <div className={cx(ui.card, ui.emptyState)}>
-            <p>Nenhum treino planejado ainda. Monte o primeiro no formulário acima ou comece um treino livre.</p>
-          </div>
-        ) : (
-          <div className={styles.cards}>
-            {workouts.map((workout) => (
-              <article key={workout.id} className={cx(ui.card, styles.card)}>
-                <div className={styles.cardHeader}>
-                  <div className={styles.cardTitleBlock}>
-                    <h3>{workout.title}</h3>
-                    {workout.description && <p>{workout.description}</p>}
-                    {workout.weekdays && workout.weekdays.length > 0 && (
-                      <p className={styles.cardDays}>📅 {formatWeekdays(workout.weekdays)}</p>
-                    )}
-                  </div>
-
-                  <small>{new Date(workout.createdAt).toLocaleDateString('pt-BR')}</small>
-                </div>
-
-                {workout.exercises && workout.exercises.length > 0 && (
-                  <div className={styles.exerciseList}>
-                    {workout.exercises.map((exercise, index) => {
-                      const reference = referenceSetsFor(exercise, index, performance[workout.id]);
-                      return (
-                        <div key={`${exercise.exerciseId ?? exercise.name}-${index}`} className={styles.exerciseCard}>
-                          <h4>💪 {exercise.name}</h4>
-                          <p className={styles.setSource}>
-                            {reference.source === 'last_session' && reference.performedAt
-                              ? `Último treino · ${new Date(reference.performedAt).toLocaleDateString('pt-BR')}`
-                              : 'Planejado (ainda sem treino concluído)'}
-                          </p>
-
-                          <table className={styles.setTable}>
-                            <thead>
-                              <tr>
-                                <th scope="col">Série</th>
-                                <th scope="col">Peso</th>
-                                <th scope="col">Reps</th>
-                              </tr>
-                            </thead>
-
-                            <tbody>
-                              {reference.sets.map((set, setIndex) => (
-                                <tr key={`${set.weight}-${set.reps}-${setIndex}`}>
-                                  <td>
-                                    {setIndex + 1}
-                                    {set.type !== 'normal' && set.type in SET_TYPE_LABEL && (
-                                      <small> · {SET_TYPE_LABEL[set.type as SetType]}</small>
-                                    )}
-                                  </td>
-                                  <td>{set.weight}kg</td>
-                                  <td>{set.reps}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                <div className={styles.actions}>
-                  <button
-                    type="button"
-                    className={cx(ui.btn, ui.btnPrimary)}
-                    onClick={() => void handleStartWorkout(workout)}
-                  >
-                    ▶ Iniciar treino
-                  </button>
-
-                  <button type="button" className={cx(ui.btn, ui.btnWarning)} onClick={() => handleEditWorkout(workout)}>
-                    Editar
-                  </button>
-
-                  <button
-                    type="button"
-                    className={cx(ui.btn, ui.btnDanger)}
-                    onClick={() => handleDeleteWorkout(workout.id)}
-                  >
-                    Excluir
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
       </section>
     </div>
   );

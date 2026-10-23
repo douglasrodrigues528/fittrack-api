@@ -281,11 +281,32 @@
 }
 
 /* ---------- lista de treinos ---------- */
+.listHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin: 0 0 12px;
+}
+
 .listTitle {
-  margin: 4px 0 12px;
+  margin: 0;
   color: #fff;
   font-size: 1.3rem;
   font-weight: 800;
+}
+
+/* Botão claro sobre o fundo verde (criar rotina sem abrir o formulário na página toda). */
+.page .newRoutineBtn {
+  min-height: 40px;
+  padding: 8px 14px;
+  background: #fff;
+  color: var(--ft-ink);
+}
+
+.page .newRoutineBtn:hover:not(:disabled) {
+  background: #f3f4f6;
 }
 
 .cards {
@@ -295,14 +316,10 @@
 }
 
 .card {
-  padding: 16px;
-}
-
-.cardHeader {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-bottom: 14px;
+  gap: 12px;
+  padding: 16px;
 }
 
 .cardTitleBlock {
@@ -324,8 +341,87 @@
   overflow-wrap: anywhere;
 }
 
-.cardHeader small {
+.cardTitleBlock .cardSummary {
+  margin-top: 4px;
   color: var(--ft-muted);
+  font-size: 0.9rem;
+}
+
+/* Ação principal do cartão: grande e no topo, ao alcance do polegar. */
+.page .startBtn {
+  min-height: 48px;
+  font-size: 1rem;
+}
+
+.cardTools {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.page .cardTools > button {
+  min-height: 40px;
+  padding: 8px 6px;
+  font-size: 0.88rem;
+}
+
+.cardDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.cardDescription {
+  margin: 0;
+  color: #4b5563;
+  overflow-wrap: anywhere;
+}
+
+.createdAt {
+  color: var(--ft-muted);
+}
+
+.emptyRoutines {
+  padding: 22px 18px;
+  text-align: center;
+}
+
+.emptyTitle {
+  margin: 0 0 6px;
+  color: var(--ft-ink);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.emptyText {
+  margin: 0 0 14px;
+  color: var(--ft-muted);
+  line-height: 1.45;
+}
+
+.emptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.emptyActions > button {
+  flex: 1 1 180px;
+}
+
+.formHeader {
+  display: flex;
+  justify-content: flex-end;
+  margin: -4px 0 4px;
+}
+
+.page .closeFormBtn {
+  min-height: 36px;
+  padding: 6px 14px;
+  font-size: 0.88rem;
 }
 
 .exerciseList {
@@ -375,17 +471,6 @@
   font-size: 0.85rem;
 }
 
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 16px;
-}
-
-.actions > button {
-  flex: 1 1 130px;
-}
-
 /* ---------- a partir de telas pequenas-médias ---------- */
 @media (min-width: 480px) {
   .stats {
@@ -411,13 +496,6 @@
   .formCard,
   .card {
     padding: 22px;
-  }
-
-  .cardHeader {
-    flex-direction: row;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
   }
 }
 
@@ -450,7 +528,6 @@
     align-items: start;
   }
 
-  .actions > button,
   .formActions > button {
     flex: 0 0 auto;
   }
