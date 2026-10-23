@@ -1,0 +1,107 @@
+/* Duas formas de começar (rotina x treino livre). Cartões e botões base vêm de ui.module.css. */
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+.choice {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-top: 6px solid transparent;
+}
+
+.routine {
+  border-top-color: var(--ft-ink);
+}
+
+.free {
+  border-top-color: #245f56;
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #f3f4f6;
+  font-size: 1.4rem;
+}
+
+.free .icon {
+  background: #e5eceb;
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  margin: 0 0 6px;
+  color: var(--ft-ink);
+  font-size: 1.1rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.text {
+  margin: 0;
+  color: var(--ft-muted);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.text strong {
+  color: var(--ft-ink);
+}
+
+.limit {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fef3c7;
+  color: #78350f;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.action {
+  width: 100%;
+}
+
+.freeBtn {
+  background: #245f56;
+  color: #fff;
+}
+
+.freeBtn:hover:not(:disabled) {
+  background: #1b4b44;
+}
+
+/* Primeira entrada: cartões maiores e texto mais confortável. */
+.gridWelcome .choice {
+  padding: 22px 20px;
+}
+
+.gridWelcome .title {
+  font-size: 1.3rem;
+}
+
+.gridWelcome .icon {
+  width: 52px;
+  height: 52px;
+  font-size: 1.7rem;
+}
+
+@media (min-width: 640px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+}

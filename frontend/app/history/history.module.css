@@ -1,0 +1,90 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.card {
+  overflow: hidden;
+}
+
+.summary {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.titleRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.titleRow strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 1.05rem;
+  color: #245f56;
+}
+
+.titleRow small {
+  color: #61707b;
+  white-space: nowrap;
+}
+
+.metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 8px;
+  color: #3b4a54;
+  font-size: 0.9rem;
+}
+
+.details {
+  padding: 0 14px 14px;
+  border-top: 1px solid #eef2f3;
+}
+
+.details > button {
+  margin-top: 14px;
+}
+
+
+.emptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.badgePlanned,
+.badgeFree {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.badgePlanned {
+  background: #e5e7eb;
+  color: var(--ft-ink);
+}
+
+.badgeFree {
+  background: #e5eceb;
+  color: #245f56;
+}

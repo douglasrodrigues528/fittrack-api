@@ -1,0 +1,353 @@
+/* Calendário de consistência: dias com sessões concluídas (semana e mês). */
+
+.calendar {
+  padding: 14px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.heading {
+  margin: 0;
+  color: var(--ft-ink);
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.more {
+  color: #245f56;
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+
+.tabs {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  background: #eef2f3;
+}
+
+.tab {
+  min-height: 36px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ft-ink);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tabOn {
+  background: var(--ft-ink);
+  color: #fff;
+}
+
+.nav {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.navBtn {
+  min-height: 44px;
+  border: 1px solid var(--ft-border);
+  border-radius: var(--ft-radius-sm);
+  background: #fff;
+  color: var(--ft-ink);
+  font-size: 1.4rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.navBtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.period {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+  text-align: center;
+  color: var(--ft-ink);
+}
+
+.period span {
+  color: var(--ft-muted);
+  font-size: 0.85rem;
+}
+
+/* Sete colunas que sempre cabem na largura (375 px inclusive). */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.weekday {
+  padding: 2px 0 4px;
+  color: var(--ft-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: 64px;
+  padding: 6px 0;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: #f6f8f8;
+  color: var(--ft-ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.monthGrid .day {
+  min-height: 44px;
+  padding: 4px 0;
+  border-radius: 10px;
+}
+
+.dayName {
+  color: var(--ft-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.dayNumber {
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.monthGrid .dayNumber {
+  font-size: 0.92rem;
+}
+
+.marker {
+  min-height: 0.9em;
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* Treino concluído: preenchido. */
+.trained {
+  background: #245f56;
+  color: #fff;
+}
+
+.trained .dayName {
+  color: #e5eceb;
+}
+
+/* Hoje: só a borda escura (não confunde com dia treinado). */
+.today {
+  border-color: var(--ft-ink);
+}
+
+.trained.today {
+  border-color: var(--ft-ink);
+  box-shadow: inset 0 0 0 2px #fff;
+}
+
+/* Dia selecionado: anel duplo, distinto de "hoje" e do foco do teclado. */
+.selected {
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 4px #245f56;
+}
+
+.trained.today.selected {
+  box-shadow:
+    inset 0 0 0 2px #fff,
+    0 0 0 2px #fff,
+    0 0 0 4px #245f56;
+}
+
+.outside:not(.trained) {
+  background: transparent;
+  color: #6b7280;
+}
+
+.future {
+  background: transparent;
+  color: #9ca3af;
+  cursor: default;
+}
+
+.day:disabled {
+  cursor: default;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  margin-top: 10px;
+}
+
+.legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ft-muted);
+  font-size: 0.8rem;
+}
+
+.legendTrained {
+  color: #245f56;
+}
+
+.legendToday {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-left: 8px;
+  border: 2px solid var(--ft-ink);
+  border-radius: 4px;
+}
+
+.linkBtn {
+  min-height: 36px;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  color: #245f56;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.dayPanel {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #eef2f3;
+}
+
+.dayTitle {
+  margin: 0 0 8px;
+  color: var(--ft-ink);
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.dayTitle::first-letter {
+  text-transform: uppercase;
+}
+
+.empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--ft-muted);
+}
+
+.empty p {
+  margin: 0;
+}
+
+.sessionList {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sessionItem {
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f9fafb;
+  color: var(--ft-text);
+}
+
+.sessionRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sessionInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sessionInfo strong {
+  color: var(--ft-ink);
+  overflow-wrap: anywhere;
+}
+
+.sessionInfo span {
+  color: var(--ft-muted);
+  font-size: 0.88rem;
+}
+
+.detailsBtn {
+  min-height: 40px;
+  padding: 6px 14px;
+}
+
+.badgePlanned,
+.badgeFree {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.badgePlanned {
+  background: #e5e7eb;
+  color: var(--ft-ink);
+}
+
+.badgeFree {
+  background: #e5eceb;
+  color: #245f56;
+}
+
+@media (min-width: 640px) {
+  .calendar {
+    padding: 18px;
+  }
+
+  .grid {
+    gap: 6px;
+  }
+
+  .monthGrid .day {
+    min-height: 56px;
+  }
+}

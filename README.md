@@ -351,11 +351,13 @@ POST /users
 
 Essa rota é pública para permitir o cadastro.
 
-### Listar usuários
+### Dados do usuário logado
 
 ```http
-GET /users
+GET /users/me
 ```
+
+> A listagem de todos os usuários (`GET /users`) foi removida por segurança. `GET/PATCH/DELETE /users/:id` só funcionam para a própria conta.
 
 ### Buscar usuário por ID
 
@@ -473,6 +475,56 @@ DELETE /workouts/:id
     }
   ]
 }
+```
+
+---
+
+## 📈 Sessões de treino (histórico)
+
+O **treino planejado** (`/workouts`) é o modelo reutilizável; cada vez que você treina é registrada uma **sessão** (`/sessions`). Uma sessão pode vir de um treino planejado (`origin: "planned"`) ou ser um **treino livre** (`origin: "free"`), sem modelo nenhum. Sessões nunca criam, alteram ou ocupam vagas de treinos planejados.
+
+```http
+POST /sessions/start          # abre uma sessão em andamento (com ou sem workoutId)
+GET  /sessions/active         # { session: ... | null } — retomar após recarregar ou em outro aparelho
+PUT  /sessions/:id/progress   # grava o estado atual da tela (exercícios, séries, feitas ou não)
+POST /sessions/:id/finish     # conclui: grava só as séries realizadas (idempotente)
+POST /sessions/:id/cancel     # descarta (não vai para o histórico)
+GET  /sessions                # histórico: só sessões concluídas (?page=1&limit=20)
+GET  /sessions/:id
+DELETE /sessions/:id
+POST /sessions                # registra de uma vez uma sessão já finalizada (compatibilidade)
+POST /sessions/previous       # últimas séries feitas de cada exercício, para pré-preencher
+```
+
+- Estados: `in_progress`, `completed`, `cancelled`. Há no máximo **uma sessão em andamento por usuário** (índice único parcial no banco); tentar abrir outra devolve `409` com `code: "SESSION_IN_PROGRESS"` e a sessão a retomar.
+- O app grava cada toque no aparelho e sincroniza com `PUT /progress` logo em seguida; sem conexão, continua salvo no aparelho e reenvia ao reconectar.
+- As séries **planejadas** ficam em `workouts.exercises`; o que está na tela durante o treino fica em `workout_sessions.progress`; só as séries **realizadas** vão para `session_sets` ao concluir.
+
+## 🧭 Jornada inicial e limite de treinos planejados
+
+```http
+GET  /onboarding             # { onboardingCompleted, choice, plannedWorkouts: { used, limit, remaining }, completedSessions, activeSession }
+POST /onboarding/complete    # { "choice": "routine" | "free" } — registra só a primeira escolha
+GET  /workouts/quota         # { used, limit: 7, remaining }
+```
+
+- Usuário novo vê as boas-vindas com **Criar minha rotina** e **Começar treino livre**. A escolha fica no banco (`users.onboardingCompletedAt`); quem já tem treinos ou sessões nunca volta a ver essa tela.
+- **Limite de 7 treinos planejados por usuário**, garantido no `WorkoutsService`: a criação roda numa transação que trava a linha do usuário (`SELECT … FOR UPDATE`) antes de contar, então requisições simultâneas não passam do limite. O 8º recebe `409` com `code: "WORKOUT_LIMIT_REACHED"`. Editar não ocupa vaga; excluir libera a vaga quando a exclusão é concluída. Treinos livres e o histórico não contam.
+- Treinos planejados podem ter dias da semana opcionais (`weekdays`: 0 = domingo … 6 = sábado).
+
+## 🗃️ Migrations
+
+Em desenvolvimento o esquema é sincronizado automaticamente (`synchronize`, só acrescenta colunas/índices nesta versão). Em produção use a migration, que é idempotente e não apaga dados:
+
+```bash
+npm run migration:run          # a partir do código-fonte (ts-node)
+npm run migration:run:prod     # a partir do build (dist/)
+```
+
+Testes e2e da jornada (exigem um banco **descartável**; nunca o de desenvolvimento):
+
+```bash
+E2E_DB_NAME=fittrack_journey_e2e npm run test:e2e -- journey
 ```
 
 ---
@@ -655,18 +707,22 @@ fittrack
 
 ## 4. Configurar as variáveis de ambiente
 
-Crie um arquivo `.env` na raiz do projeto:
+Copie o modelo `.env.example` para `.env` na raiz do projeto e ajuste os valores. Os principais são:
 
 ```env
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
-DB_PASSWORD=123456
+DB_PASSWORD=<senha-do-seu-postgres>
 DB_NAME=fittrack
-JWT_SECRET=jwt-secret-key
+JWT_SECRET=<segredo-aleatorio-longo>
 ```
 
 Ajuste os valores de acordo com sua instalação do PostgreSQL.
+
+O `.env.example` traz também `CORS_ORIGINS`, `PORT`, `DATABASE_URL`, `DB_SSL`, `TRUST_PROXY` etc. Em produção, `JWT_SECRET` é obrigatório e `synchronize` fica desligado — veja `DEPLOY.md`.
+
+No frontend, o modelo é `frontend/.env.example` (`NEXT_PUBLIC_API_URL`); copie-o para `frontend/.env.local` se a API não estiver em `http://localhost:3000`.
 
 Não envie o arquivo `.env` para o GitHub.
 

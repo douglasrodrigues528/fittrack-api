@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { isAxiosError } from 'axios';
 import { api } from '../services/api';
 import styles from './page.module.css';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('donald@email.com');
-  const [password, setPassword] = useState('123456');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -28,11 +29,9 @@ export default function LoginPage() {
       localStorage.setItem('token', token);
 
       window.location.href = '/dashboard';
-    } catch (error: any) {
-      setError(
-        error.response?.data?.message ||
-          'Erro ao fazer login',
-      );
+    } catch (error: unknown) {
+      const message = isAxiosError(error) ? error.response?.data?.message : undefined;
+      setError(typeof message === 'string' && message ? message : 'Erro ao fazer login');
     } finally {
       setLoading(false);
     }
@@ -54,6 +53,8 @@ export default function LoginPage() {
           <input
             className={styles.input}
             placeholder="E-mail"
+            type="email"
+            autoComplete="email"
             value={email}
             onChange={(event) =>
               setEmail(event.target.value)
@@ -64,6 +65,7 @@ export default function LoginPage() {
             className={styles.input}
             placeholder="Senha"
             type="password"
+            autoComplete="current-password"
             value={password}
             onChange={(event) =>
               setPassword(event.target.value)

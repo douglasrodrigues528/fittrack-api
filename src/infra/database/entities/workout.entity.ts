@@ -10,6 +10,7 @@ import { UserEntity } from './user.entity';
 
 export interface WorkoutExercise {
   name: string;
+  exerciseId?: string;
   sets: {
     weight: number;
     reps: number;
@@ -36,7 +37,12 @@ export class WorkoutEntity {
   })
   exercises!: WorkoutExercise[];
 
-  @ManyToOne(() => UserEntity, (user) => user.workouts)
+  /** Dias da semana planejados (0 = domingo … 6 = sábado). Vazio = sem dia fixo. */
+  @Column({ type: 'jsonb', default: () => "'[]'::jsonb" })
+  weekdays!: number[];
+
+  // Excluir a conta remove também os treinos planejados do usuário.
+  @ManyToOne(() => UserEntity, (user) => user.workouts, { onDelete: 'CASCADE' })
   user!: UserEntity;
 
   @Column()
