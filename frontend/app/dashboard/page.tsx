@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { isAxiosError } from 'axios';
 import { cx } from '../../components/cx';
 import StartChoices from '../../components/StartChoices';
+import TrainingCalendar from '../../components/TrainingCalendar';
 import ui from '../../components/ui.module.css';
 import { api } from '../../services/api';
 import { liveStore, useLiveSession } from '../../lib/use-live-session';
@@ -548,6 +549,9 @@ export default function DashboardPage() {
           onStartFree={() => void handleStartFree()}
         />
       </section>
+
+      {/* Dias realmente treinados nesta semana (sessões concluídas). */}
+      <TrainingCalendar mode="week" />
 
       <section className={styles.stats} aria-label="Resumo dos treinos">
         <div className={cx(ui.card, styles.statCard)}>

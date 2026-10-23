@@ -1,0 +1,33 @@
+/* Exercícios, séries e cargas de uma sessão concluída (histórico e calendário). */
+
+.exercise h3 {
+  margin: 12px 0 4px;
+  font-size: 0.98rem;
+}
+
+.exercise ol {
+  margin: 0;
+  padding-left: 20px;
+  color: #3b4a54;
+}
+
+.exercise em {
+  color: #61707b;
+  font-size: 0.85rem;
+}
+
+.notes {
+  margin: 12px 0 0;
+  color: #3b4a54;
+}
+
+.status {
+  margin: 10px 0 0;
+  color: var(--ft-muted);
+}
+
+.error {
+  margin: 10px 0 0;
+  color: #991b1b;
+  font-weight: 600;
+}

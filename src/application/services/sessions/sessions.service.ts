@@ -5,7 +5,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, QueryFailedError, Repository } from 'typeorm';
+import {
+  And,
+  DataSource,
+  EntityManager,
+  LessThan,
+  MoreThanOrEqual,
+  QueryFailedError,
+  Repository,
+} from 'typeorm';
 
 import {
   CreateSessionDto,
@@ -31,6 +39,9 @@ export const SESSION_CLOSED = 'SESSION_CLOSED';
 
 /** Quantas execuções concluídas da rotina são consultadas para achar o último registro de cada exercício. */
 const PERFORMANCE_LOOKBACK = 50;
+
+/** Maior período aceito pelo calendário (um mês exibido em grade cabe em 42 dias). */
+const CALENDAR_MAX_RANGE_MS = 62 * 24 * 60 * 60 * 1000;
 
 /** Tolerância para relógios de celular adiantados. */
 const CLOCK_SKEW_MS = 5 * 60 * 1000;
@@ -343,6 +354,63 @@ export class SessionsService {
       }
     }
     return { message: 'Treino descartado' };
+  }
+
+  /**
+   * Calendário de consistência: sessões CONCLUÍDAS do usuário iniciadas em [from, to).
+   * Devolve só o necessário para marcar os dias; os detalhes vêm de GET /sessions/:id.
+   * O agrupamento por dia é feito no app, no fuso local do usuário.
+   */
+  async findCalendar(from: string, to: string, userId: string) {
+    const start = new Date(from);
+    const end = new Date(to);
+    if (!(start.getTime() < end.getTime())) {
+      throw new BadRequestException('O fim do período deve ser depois do início.');
+    }
+    if (end.getTime() - start.getTime() > CALENDAR_MAX_RANGE_MS) {
+      throw new BadRequestException('Consulte no máximo 62 dias por vez.');
+    }
+
+    const [sessions, first] = await Promise.all([
+      this.sessionsRepository.find({
+        where: {
+          userId,
+          status: 'completed',
+          startedAt: And(MoreThanOrEqual(start), LessThan(end)),
+        },
+        select: {
+          id: true,
+          workoutId: true,
+          origin: true,
+          title: true,
+          startedAt: true,
+          finishedAt: true,
+          durationSeconds: true,
+        },
+        order: { startedAt: 'ASC' },
+      }),
+      this.sessionsRepository.findOne({
+        where: { userId, status: 'completed' },
+        select: { id: true, startedAt: true },
+        order: { startedAt: 'ASC' },
+      }),
+    ]);
+
+    return {
+      from: start.toISOString(),
+      to: end.toISOString(),
+      // Início do histórico: o app não oferece navegar para meses anteriores a este.
+      firstSessionAt: first?.startedAt ?? null,
+      data: sessions.map((session) => ({
+        id: session.id,
+        workoutId: session.workoutId,
+        origin: resolveOrigin(session),
+        title: session.title,
+        startedAt: session.startedAt,
+        finishedAt: session.finishedAt,
+        durationSeconds: session.durationSeconds ?? 0,
+      })),
+    };
   }
 
   /** Histórico: somente sessões concluídas, da mais recente para a mais antiga. */

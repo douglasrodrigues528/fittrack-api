@@ -6,7 +6,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import ui from '../../components/ui.module.css';
 import { api } from '../../services/api';
 import { TOKEN_KEY } from '../../lib/use-workout-draft';
-import { SET_TYPE_LABEL, formatDuration, type SetType } from '../../lib/session';
+import { SessionExercises } from '../../components/SessionDetails';
+import TrainingCalendar from '../../components/TrainingCalendar';
+import { formatDuration, type SetType } from '../../lib/session';
 import styles from './history.module.css';
 
 interface HistorySet {
@@ -134,6 +136,8 @@ function HistoryList() {
         </div>
       )}
 
+      <TrainingCalendar mode="full" />
+
       {error && (
         <div className={ui.bannerError} role="alert">
           {error}
@@ -188,20 +192,7 @@ function HistoryList() {
 
             {open && (
               <div className={styles.details}>
-                {session.exercises.map((exercise, index) => (
-                  <div key={`${exercise.name}-${index}`} className={styles.exercise}>
-                    <h2>{exercise.name}</h2>
-                    <ol>
-                      {exercise.sets.map((set, setIndex) => (
-                        <li key={setIndex}>
-                          {set.weight}kg × {set.reps}
-                          {set.type !== 'normal' && <em> · {SET_TYPE_LABEL[set.type]}</em>}
-                        </li>
-                      ))}
-                    </ol>
-                  </div>
-                ))}
-                {session.notes && <p className={styles.notes}>📝 {session.notes}</p>}
+                <SessionExercises exercises={session.exercises} notes={session.notes} />
                 <button type="button" className={`${ui.btn} ${ui.btnDanger} ${ui.btnBlock}`} onClick={() => void handleDelete(session.id)}>
                   Excluir do histórico
                 </button>

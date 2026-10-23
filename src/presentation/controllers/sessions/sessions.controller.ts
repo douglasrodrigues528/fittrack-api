@@ -18,6 +18,7 @@ import {
   CreateSessionDto,
   PreviousSetsQueryDto,
 } from '../../../application/dto/create-session.dto';
+import { CalendarQueryDto } from '../../../application/dto/calendar-query.dto';
 import { ListSessionsQueryDto } from '../../../application/dto/list-sessions-query.dto';
 import {
   FinishSessionDto,
@@ -46,6 +47,12 @@ export class SessionsController {
   @Get()
   findAll(@Query() query: ListSessionsQueryDto, @CurrentUser() user: AuthUser) {
     return this.sessionsService.findAll(user.userId, query.page, query.limit);
+  }
+
+  /** Dias treinados: sessões concluídas do usuário iniciadas em [from, to) (ISO). */
+  @Get('calendar')
+  calendar(@Query() query: CalendarQueryDto, @CurrentUser() user: AuthUser) {
+    return this.sessionsService.findCalendar(query.from, query.to, user.userId);
   }
 
   /** Abre uma sessão em andamento (treino livre, ou a partir de um treino planejado). */
