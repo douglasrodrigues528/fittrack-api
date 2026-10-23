@@ -42,7 +42,7 @@ Arquitetura sugerida: **Vercel** (frontend Next.js) → **Render** (API NestJS) 
 
 ## 4. Segurança — estado atual e o que falta
 
-Contas e login: excluir a conta apaga treinos, sessões e séries (migration `CascadeWorkoutsOnUserDelete`); trocar o e-mail para um já usado responde 409; trocar a senha exige `currentPassword` e invalida todos os tokens emitidos antes (coluna `users.tokenVersion`, conferida a cada requisição); 5 senhas erradas em 15 min bloqueiam a conta por até 15 min (429 + `Retry-After`) e 50 falhas por IP bloqueiam o IP. Os contadores de login ficam em memória: com mais de uma instância da API, cada uma conta separadamente.
+Contas e login: excluir a conta apaga treinos, sessões e séries (migration `CascadeWorkoutsOnUserDelete`); trocar o e-mail para um já usado responde 409; trocar a senha exige `currentPassword` e invalida todos os tokens emitidos antes (coluna `users.tokenVersion`, criada pela migration `AddUserTokenVersion`, conferida a cada requisição — sem essa migration o login responde 500 em produção); 5 senhas erradas em 15 min bloqueiam a conta por até 15 min (429 + `Retry-After`) e 50 falhas por IP bloqueiam o IP. Os contadores de login ficam em memória: com mais de uma instância da API, cada uma conta separadamente.
 
 Já feito neste código: segredo JWT e CORS por ambiente; Swagger desligável; `synchronize` desligado por padrão em produção; credenciais padrão removidas da tela de login; PATCH de treinos/usuários agora validado (antes dava para sobrescrever `userId`); `/users/:id` restrito à própria conta (antes qualquer usuário logado podia editar/excluir outros); `GET /users` (listar todos) removido, use `GET /users/me`.
 

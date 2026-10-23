@@ -67,7 +67,8 @@ describeE2E('Jornada inicial, limite de treinos e sessões (e2e)', () => {
     // Variáveis do processo têm prioridade sobre o .env no ConfigModule.
     delete process.env.DATABASE_URL;
     process.env.DB_NAME = dbName;
-    process.env.DB_SYNCHRONIZE = 'true';
+    // E2E_SYNCHRONIZE=false testa num banco criado só pelas migrations (como em produção).
+    process.env.DB_SYNCHRONIZE = process.env.E2E_SYNCHRONIZE ?? 'true';
 
     const { AppModule } = await import('../src/app.module');
     const moduleRef = await Test.createTestingModule({
