@@ -1,0 +1,202 @@
+/* Primitivos visuais compartilhados da área autenticada (derivados do dashboard).
+   Use com `composes: nome from '../../components/ui.module.css'`. */
+
+.card {
+  min-width: 0;
+  border-radius: var(--ft-radius);
+  background: var(--ft-surface);
+  box-shadow: var(--ft-shadow);
+  color: var(--ft-text);
+}
+
+.sectionTitle {
+  margin: 0 0 14px;
+  font-size: 1.2rem;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.fieldLabel {
+  display: block;
+  min-width: 0;
+  color: var(--ft-text);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.fieldLabel > .control {
+  margin-top: 6px;
+  font-weight: 400;
+}
+
+.btnBlock {
+  width: 100%;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: var(--ft-radius-sm);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.btnPrimary {
+  background: var(--ft-ink);
+  color: #fff;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: #1f2937;
+}
+
+.btnSecondary {
+  background: #e5e7eb;
+  color: var(--ft-ink);
+}
+
+.btnSecondary:hover:not(:disabled) {
+  background: #d1d5db;
+}
+
+.btnWarning {
+  background: #f59e0b;
+  color: #1f1300;
+}
+
+.btnWarning:hover:not(:disabled) {
+  background: #d98a09;
+}
+
+.btnDanger {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.btnDanger:hover:not(:disabled) {
+  background: #fecaca;
+}
+
+.control {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 13px;
+  border: 1px solid var(--ft-border);
+  border-radius: var(--ft-radius-sm);
+  background: #fff;
+  color: var(--ft-ink);
+  font: inherit;
+  font-size: 1rem; /* 16px evita o zoom automático do iOS ao focar */
+  box-sizing: border-box;
+}
+
+.control::placeholder {
+  color: #6b7280;
+}
+
+/* variantes (mesmo arquivo: a ordem aqui define quem vence) */
+.controlCenter {
+  padding: 8px 2px;
+  text-align: center;
+}
+
+/* campos numéricos: sem as setas do navegador, que roubam espaço no celular */
+.controlNumber {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.controlNumber::-webkit-outer-spin-button,
+.controlNumber::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.controlTextarea {
+  min-height: 95px;
+  resize: vertical;
+}
+
+.bannerError,
+.bannerSuccess,
+.bannerInfo {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--ft-radius-sm);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.bannerError {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+.bannerSuccess {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #14532d;
+}
+
+.bannerInfo {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+  color: #0c4a6e;
+}
+
+.pageTitle {
+  margin: 0 0 16px;
+  color: #fff;
+  font-size: clamp(1.5rem, 5vw, 2rem);
+  font-weight: 800;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.pageSubtitle {
+  margin: -8px 0 20px;
+  color: #fff;
+  opacity: 0.95;
+  line-height: 1.5;
+}
+
+.emptyState {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--ft-muted);
+  overflow-wrap: anywhere;
+}
+
+.loadingText {
+  margin: 12px 0;
+  color: #fff;
+  font-weight: 700;
+}

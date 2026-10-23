@@ -1,304 +1,463 @@
-.container {
-  min-height: 100vh;
-  background: #25a741;
-  padding: 40px;
-  font-family: Arial, Helvetica, sans-serif;
-  color: white;
-}
+/* Dashboard. Botões, campos, avisos e cartões vêm de components/ui.module.css.
+   Ajustes locais usam ".page .classe" para vencer as regras base sem depender da ordem do CSS. */
 
-.header {
+.page {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
 }
 
-.header h1 {
+.liveBanner {
+  display: block;
+  padding: 14px 16px;
+  border-radius: var(--ft-radius-sm);
+  background: var(--ft-ink);
+  color: #fff;
+  line-height: 1.4;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.liveBanner:hover {
+  background: #1f2937;
+}
+
+/* ---------- boas-vindas e atalhos ---------- */
+.welcomeHeader {
+  max-width: 720px;
+  padding-top: 8px;
+}
+
+.welcomeNote {
   margin: 0;
-  font-size: 32px;
+  color: #fff;
+  font-weight: 600;
+  line-height: 1.5;
 }
 
-.header p {
-  margin: 8px 0 0;
-  opacity: 0.95;
+.slotTag {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #14532d;
+  font-size: 0.8rem;
+  font-weight: 700;
+  vertical-align: middle;
 }
 
-.logoutButton,
-.primaryButton,
-.secondaryButton,
-.editButton,
-.deleteButton {
-  border: none;
-  border-radius: 10px;
+.guide {
+  margin: 0 0 14px;
+  padding: 12px 14px 12px 34px;
+  border: 1px solid #bae6fd;
+  border-radius: var(--ft-radius-sm);
+  background: #f0f9ff;
+  color: #0c4a6e;
+  line-height: 1.5;
+}
+
+.weekdays {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.weekdayChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.weekdayChip {
+  min-width: 48px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--ft-border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ft-ink);
+  font: inherit;
+  font-weight: 700;
   cursor: pointer;
-  font-weight: bold;
-  transition: 0.2s;
 }
 
-.logoutButton {
-  background: #111827;
-  color: white;
-  padding: 12px 18px;
+.weekdayChipOn {
+  border-color: var(--ft-ink);
+  background: var(--ft-ink);
+  color: #fff;
 }
 
-.primaryButton {
-  background: #111827;
-  color: white;
-  padding: 12px 18px;
-  margin-top: 12px;
+.cardTitleBlock .cardDays {
+  margin-top: 6px;
+  color: var(--ft-muted);
+  font-size: 0.9rem;
+  font-weight: 700;
 }
 
-.secondaryButton {
-  background: #e5e7eb;
-  color: #111827;
-  padding: 12px 18px;
-  margin-top: 12px;
-}
-
-.editButton {
-  background: #f59e0b;
-  color: white;
-  padding: 10px 14px;
-}
-
-.deleteButton {
-  background: #ef4444;
-  color: white;
-  padding: 10px 14px;
-}
-
+/* ---------- métricas ---------- */
 .stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 18px;
-  margin-bottom: 28px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .statCard {
-  background: white;
-  color: #333;
-  padding: 20px;
-  border-radius: 16px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16);
+  padding: 14px 12px;
 }
 
 .statCard strong {
   display: block;
-  color: #25a741;
-  font-size: 30px;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
+  color: var(--ft-green);
+  font-size: 1.6rem;
+  line-height: 1.1;
 }
 
 .statCard span {
-  color: #6b7280;
-  font-size: 14px;
+  color: var(--ft-muted);
+  font-size: 0.82rem;
 }
 
+/* ---------- formulário ---------- */
 .formCard {
-  background: white;
-  color: #333;
-  padding: 26px;
-  border-radius: 18px;
-  margin-bottom: 32px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16);
+  padding: 16px;
 }
 
-.input,
-.textarea {
-  width: 100%;
-  margin-top: 12px;
-  margin-bottom: 14px;
-  padding: 13px;
-  border-radius: 10px;
-  border: 1px solid #d1d5db;
-  font-size: 15px;
-  box-sizing: border-box;
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
-.textarea {
-  min-height: 95px;
-  resize: vertical;
+.bannerLine {
+  margin: 2px 0;
 }
 
 .exerciseBox {
+  min-width: 0;
+  padding: 14px;
   border: 1px solid #e5e7eb;
-  background: #f9fafb;
-  padding: 18px;
   border-radius: 14px;
-  margin-top: 16px;
+  background: #f9fafb;
 }
 
-.setInputs {
+.boxTitle {
+  margin: 0 0 6px;
+  font-size: 1.02rem;
+  font-weight: 800;
+}
+
+.hint {
+  margin: 0 0 12px;
+  color: var(--ft-muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.page .catalogBtn {
+  width: 100%;
+  background: #245f56;
+}
+
+.page .catalogBtn:hover {
+  background: #1b4b44;
+}
+
+.manualRow {
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  gap: 12px;
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 12px;
 }
 
-.previewBox {
-  background: #f3f4f6;
-  color: #333;
-  padding: 16px;
+.fieldError {
+  margin: 6px 0 0;
+  color: #b91c1c;
+  font-size: 0.9rem;
+}
+
+.warning {
+  margin: 8px 0;
+  color: #92400e;
+  font-size: 0.9rem;
+}
+
+.draftExercise {
+  min-width: 0;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
   border-radius: 12px;
-  margin-top: 14px;
+  background: #fff;
 }
 
+.draftExerciseHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin-bottom: 8px;
+}
+
+.exerciseName {
+  flex: 1 1 160px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.iconButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.page .iconBtn {
+  min-width: 44px;
+  padding: 0 10px;
+}
+
+.page .compactBtn {
+  padding: 0 14px;
+}
+
+/* ---------- séries ---------- */
+.setRow,
+.addSetRow {
+  display: grid;
+  grid-template-columns: 4.6rem minmax(0, 1fr) minmax(0, 1fr) 44px;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.addSetRow {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed #e5e7eb;
+}
+
+.setLabel {
+  color: var(--ft-text);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.unitField {
+  position: relative;
+  min-width: 0;
+}
+
+.page .unitInput {
+  padding-right: 2.6rem;
+  padding-left: 10px;
+  text-align: right;
+}
+
+.unit {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  color: var(--ft-muted);
+  font-size: 0.78rem;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+/* ---------- ações do formulário ---------- */
 .formActions {
   display: flex;
-  gap: 12px;
-  margin-top: 14px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.formActions > button {
+  flex: 1 1 160px;
+}
+
+/* ---------- lista de treinos ---------- */
+.listTitle {
+  margin: 4px 0 12px;
+  color: #fff;
+  font-size: 1.3rem;
+  font-weight: 800;
 }
 
 .cards {
   display: grid;
-  gap: 20px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
 }
 
 .card {
-  background: white;
-  color: #333;
-  border-radius: 18px;
-  padding: 24px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16);
+  padding: 16px;
 }
 
 .cardHeader {
   display: flex;
-  justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 18px;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
 }
 
-.card h3 {
+.cardTitleBlock {
+  min-width: 0;
+}
+
+.cardTitleBlock h3 {
   margin: 0;
-  color: #25a741;
+  color: var(--ft-green);
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
-.card p {
+.cardTitleBlock p {
+  margin: 6px 0 0;
   color: #4b5563;
+  overflow-wrap: anywhere;
+}
+
+.cardHeader small {
+  color: var(--ft-muted);
 }
 
 .exerciseList {
   display: grid;
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
 }
 
 .exerciseCard {
-  background: #f9fafb;
-  border-radius: 14px;
-  padding: 16px;
+  min-width: 0;
+  padding: 12px;
   border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #f9fafb;
 }
 
 .exerciseCard h4 {
-  margin: 0 0 12px;
+  margin: 0 0 4px;
+  font-size: 1rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.setSource {
+  margin: 0 0 8px;
+  color: var(--ft-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 
 .setTable {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
 .setTable th,
 .setTable td {
-  text-align: left;
-  padding: 10px;
+  padding: 8px;
   border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+  overflow-wrap: anywhere;
 }
 
 .setTable th {
-  color: #111827;
-  font-size: 14px;
+  color: var(--ft-ink);
+  font-size: 0.85rem;
 }
 
 .actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
-  margin-top: 18px;
+  margin-top: 16px;
 }
-@media (max-width: 768px) {
-  .container {
-    padding: 16px;
-  }
 
-  .header {
-    gap: 16px;
-  }
+.actions > button {
+  flex: 1 1 130px;
+}
 
-  .header,
-  .cardHeader {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .header h1 {
-    font-size: 26px;
-  }
-
-  .logoutButton {
-    width: 100%;
-  }
-
+/* ---------- a partir de telas pequenas-médias ---------- */
+@media (min-width: 480px) {
   .stats {
-    grid-template-columns: 1fr;
-    gap: 12px;
+    gap: 14px;
+  }
+
+  .statCard {
+    padding: 18px 16px;
+  }
+
+  .statCard strong {
+    font-size: 2rem;
+  }
+
+  .manualRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .page .catalogBtn {
+    width: auto;
   }
 
   .formCard,
   .card {
-    padding: 18px;
-    border-radius: 14px;
+    padding: 22px;
   }
 
-  .setInputs {
-    grid-template-columns: 1fr;
-    gap: 0;
-  }
-
-  .primaryButton,
-  .secondaryButton,
-  .editButton,
-  .deleteButton {
-    width: 100%;
-  }
-
-  .formActions,
-  .actions {
-    flex-direction: column;
-  }
-
-  .setTable {
-    font-size: 14px;
-  }
-
-  .setTable th,
-  .setTable td {
-    padding: 8px;
+  .cardHeader {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
   }
 }
 
-@media (max-width: 420px) {
-  .container {
-    padding: 12px;
+/* Em celulares estreitos a etiqueta da série ocupa a linha de cima. */
+@media (max-width: 479px) {
+  .setRow {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px;
   }
 
-  .header h1 {
-    font-size: 24px;
+  .setLabel {
+    grid-column: 1 / -1;
   }
 
-  .header p {
-    font-size: 14px;
+  .addSetRow {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
-  .formCard,
-  .card,
-  .statCard {
-    padding: 14px;
+  .addSetBtn {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 768px) {
+  .page {
+    gap: 24px;
   }
 
-  .input,
-  .textarea {
-    font-size: 14px;
-    padding: 11px;
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .actions > button,
+  .formActions > button {
+    flex: 0 0 auto;
+  }
+}
+
+@media (min-width: 1100px) {
+  .formCard {
+    padding: 28px;
   }
 }

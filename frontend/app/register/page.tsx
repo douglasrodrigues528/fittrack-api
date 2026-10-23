@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { isAxiosError } from 'axios';
 import { api } from '../../services/api';
 import styles from '../page.module.css';
 
@@ -26,13 +27,19 @@ export default function RegisterPage() {
         password,
       });
 
-      alert('Usuário cadastrado com sucesso!');
-      window.location.href = '/';
-    } catch (error: any) {
-      setError(
-        error.response?.data?.message ||
-          'Erro ao cadastrar usuário',
-      );
+      // Entra direto: o primeiro acesso cai nas boas-vindas do dashboard.
+      try {
+        const response = await api.post('/auth/login', { email, password });
+        localStorage.setItem('token', response.data.access_token);
+        window.location.href = '/dashboard';
+      } catch {
+        alert('Conta criada! Entre com seu e-mail e senha.');
+        window.location.href = '/';
+      }
+    } catch (error: unknown) {
+      const message = isAxiosError(error) ? error.response?.data?.message : undefined;
+      const text = Array.isArray(message) ? message.join(' ') : message;
+      setError(typeof text === 'string' && text ? text : 'Erro ao cadastrar usuário');
     } finally {
       setLoading(false);
     }

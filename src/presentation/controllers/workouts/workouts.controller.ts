@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   UseGuards,
@@ -13,6 +14,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 import { CreateWorkoutDto } from '../../../application/dto/create-workout.dto';
+import { UpdateWorkoutDto } from '../../../application/dto/update-workout.dto';
 import { WorkoutsService } from '../../../application/services/workouts/workouts.service';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 
@@ -28,9 +30,15 @@ export class WorkoutsController {
     return this.workoutsService.findAllByUser(user.userId);
   }
 
+  /** Vagas de treinos planejados: { used, limit, remaining }. */
+  @Get('quota')
+  quota(@CurrentUser() user: { userId: string; email: string }) {
+    return this.workoutsService.getQuota(user.userId);
+  }
+
   @Get(':id')
   findById(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: { userId: string; email: string },
   ) {
     return this.workoutsService.findById(id, user.userId);
@@ -46,8 +54,8 @@ export class WorkoutsController {
 
   @Patch(':id')
   update(
-    @Param('id') id: string,
-    @Body() data: Partial<CreateWorkoutDto>,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() data: UpdateWorkoutDto,
     @CurrentUser() user: { userId: string; email: string },
   ) {
     return this.workoutsService.update(id, data, user.userId);
@@ -55,7 +63,7 @@ export class WorkoutsController {
 
   @Delete(':id')
   delete(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: { userId: string; email: string },
   ) {
     return this.workoutsService.delete(id, user.userId);

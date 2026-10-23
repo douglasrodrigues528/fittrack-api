@@ -3,6 +3,21 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Identidade visual da área autenticada (extraída do dashboard) */
+  --ft-bg: #25a741;
+  --ft-green: #25a741;
+  --ft-ink: #111827;
+  --ft-surface: #ffffff;
+  --ft-text: #333333;
+  --ft-muted: #5b6573;
+  --ft-border: #d1d5db;
+  --ft-radius: 16px;
+  --ft-radius-sm: 10px;
+  --ft-shadow: 0 8px 20px rgba(0, 0, 0, 0.16);
+  --ft-max: 1200px;
+  --ft-topbar-h: 56px;
+  --ft-nav-h: 60px;
 }
 
 @theme inline {
@@ -23,4 +38,10 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Foco por teclado visível em qualquer fundo (verde, branco ou escuro). */
+:focus-visible {
+  outline: 3px solid #f59e0b;
+  outline-offset: 2px;
 }

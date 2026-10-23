@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 
 import { CreateUserDto } from '../../dto/create-user.dto';
+import { UpdateUserDto } from '../../dto/update-user.dto';
 import { UserEntity } from '../../../infra/database/entities/user.entity';
 
 @Injectable()
@@ -68,7 +69,7 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
-  async update(id: string, data: Partial<CreateUserDto>) {
+  async update(id: string, data: UpdateUserDto) {
   const user = await this.findById(id);
 
   if (data.password) {
