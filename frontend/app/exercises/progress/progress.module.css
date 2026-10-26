@@ -1,0 +1,124 @@
+/* Evolução por exercício: recorde, gráfico e histórico do exercício. */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: #fff;
+  font-weight: 800;
+}
+
+.title {
+  overflow-wrap: anywhere;
+}
+
+.cardTitle {
+  margin: 0 0 6px;
+  color: var(--ft-ink);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.record,
+.chartCard {
+  padding: 14px;
+  min-width: 0;
+}
+
+.recordValue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  margin: 0;
+  color: #3b4a54;
+}
+
+.recordValue strong {
+  color: #245f56;
+  font-size: 1.8rem;
+  line-height: 1.2;
+}
+
+.recordValue em {
+  color: #61707b;
+  font-size: 0.85rem;
+}
+
+.recordMeta {
+  margin: 4px 0 0;
+  color: #61707b;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.note {
+  margin: 0 0 8px;
+  color: #61707b;
+  font-size: 0.88rem;
+}
+
+.muted {
+  margin: 0;
+  color: #61707b;
+}
+
+.history {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.history > .note {
+  margin: 0;
+  color: #fff;
+}
+
+.entry {
+  padding: 14px 14px 8px;
+}
+
+.sets {
+  margin: 8px 0 0;
+  padding-left: 22px;
+  color: #3b4a54;
+}
+
+.sets em {
+  color: #61707b;
+  font-size: 0.85rem;
+}
+
+.toggle {
+  min-height: 44px;
+  margin-top: 4px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #245f56;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.emptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.historyTitle {
+  margin: 4px 0 0;
+  color: #fff;
+}

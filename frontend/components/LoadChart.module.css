@@ -1,0 +1,277 @@
+/* Evolução por exercício: resumo da sessão selecionada, legenda e gráfico de carga + repetições. */
+
+.figure {
+  margin: 0;
+  min-width: 0;
+}
+
+/* ---------- resumo da sessão selecionada ---------- */
+.summary {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: var(--ft-radius-sm);
+  background: #f2f7f5;
+  color: #3b4a54;
+}
+
+.summaryDate {
+  color: #4d5b66;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.summaryValue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+  color: var(--ft-ink);
+}
+
+.summaryValue strong {
+  font-size: 1.45rem;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.times {
+  color: #61707b;
+  font-size: 1.1rem;
+}
+
+.summaryMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 0.85rem;
+}
+
+.chip {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #d6e3de;
+  color: #245f56;
+  font-weight: 700;
+}
+
+.compare {
+  color: #4d5b66;
+  font-variant-numeric: tabular-nums;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------- legenda ---------- */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 12px 0 2px;
+  color: #4d5b66;
+  font-size: 0.8rem;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatchLine {
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--ft-green);
+}
+
+.swatchBar {
+  width: 9px;
+  height: 12px;
+  border-radius: 2px;
+  background: #9fcdb7;
+}
+
+/* ---------- gráfico ---------- */
+.plot {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden; /* o SVG é redimensionado para a largura medida; nunca causa rolagem */
+}
+
+.svg {
+  display: block;
+  touch-action: pan-y; /* arrastar na horizontal percorre as sessões; na vertical, rola a página */
+  cursor: crosshair;
+  border-radius: var(--ft-radius-sm);
+  font-family: inherit;
+}
+
+.svg:focus {
+  outline: none;
+}
+
+.svg:focus-visible {
+  outline: 2px solid #245f56;
+  outline-offset: 2px;
+}
+
+.grid {
+  stroke: #e8edef;
+  stroke-width: 1;
+}
+
+.baseline {
+  stroke: #c9d3d8;
+  stroke-width: 1;
+}
+
+.tick {
+  fill: #61707b;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.unit {
+  fill: #4d5b66;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.band {
+  fill: #245f56;
+  fill-opacity: 0.07;
+}
+
+.line {
+  fill: none;
+  stroke: var(--ft-green);
+  stroke-width: 2.25;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.dot {
+  fill: #fff;
+  stroke: var(--ft-green);
+  stroke-width: 2;
+}
+
+/* Selecionado: maior, preenchido e com anel (não depende só da cor). */
+.dotHalo {
+  fill: #fff;
+  stroke: #245f56;
+  stroke-width: 2;
+}
+
+.dotOn {
+  fill: #245f56;
+}
+
+.pointLabel {
+  fill: var(--ft-ink);
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.bar {
+  fill: #9fcdb7;
+}
+
+/* Selecionada: mais escura e com contorno. */
+.barOn {
+  fill: #245f56;
+  stroke: #10332e;
+  stroke-width: 1;
+}
+
+.barLabel {
+  fill: #4d5b66;
+  font-size: 10.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.barLabelOn {
+  fill: var(--ft-ink);
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.date {
+  fill: #61707b;
+  font-size: 11px;
+}
+
+.dateOn {
+  fill: var(--ft-ink);
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
+.dateTickOn {
+  stroke: #245f56;
+  stroke-width: 2;
+}
+
+/* ---------- tabela ---------- */
+.values {
+  margin-top: 4px;
+  color: #3b4a54;
+  font-size: 0.9rem;
+}
+
+.values summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: #245f56;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.table caption {
+  margin-bottom: 6px;
+  color: #61707b;
+  font-size: 0.82rem;
+  text-align: left;
+}
+
+.table th,
+.table td {
+  padding: 6px 4px;
+  border-bottom: 1px solid #eef2f3;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.table th:first-child,
+.table td:first-child {
+  text-align: left;
+}
+
+.table th {
+  color: #61707b;
+  font-size: 0.8rem;
+}

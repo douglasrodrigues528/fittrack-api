@@ -169,6 +169,15 @@
   text-align: center;
 }
 
+.progressLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  color: #245f56;
+  font-weight: 800;
+}
+
 /* ---------- paginação ---------- */
 .pagination {
   display: flex;

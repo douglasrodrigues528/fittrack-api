@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -19,6 +20,7 @@ import {
   PreviousSetsQueryDto,
 } from '../../../application/dto/create-session.dto';
 import { CalendarQueryDto } from '../../../application/dto/calendar-query.dto';
+import { ExerciseProgressQueryDto } from '../../../application/dto/exercise-progress-query.dto';
 import { ListSessionsQueryDto } from '../../../application/dto/list-sessions-query.dto';
 import {
   FinishSessionDto,
@@ -53,6 +55,23 @@ export class SessionsController {
   @Get('calendar')
   calendar(@Query() query: CalendarQueryDto, @CurrentUser() user: AuthUser) {
     return this.sessionsService.findCalendar(query.from, query.to, user.userId);
+  }
+
+  /** Evolução de um exercício do catálogo: maior carga por sessão concluída, recorde e histórico. */
+  @Get('exercises/:exerciseId/progress')
+  exerciseProgress(
+    @Param('exerciseId') exerciseId: string,
+    @Query() query: ExerciseProgressQueryDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    // Mesmo limite da coluna `exerciseId` (IDs do catálogo).
+    if (exerciseId.length > 150)
+      throw new BadRequestException('ID de exercício inválido.');
+    return this.sessionsService.findExerciseProgress(
+      exerciseId,
+      user.userId,
+      query.limit,
+    );
   }
 
   /** Abre uma sessão em andamento (treino livre, ou a partir de um treino planejado). */
