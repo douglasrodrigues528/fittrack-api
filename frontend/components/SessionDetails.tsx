@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { api } from '../services/api';
+import { progressPath } from '../lib/exercise-progress';
 import { SET_TYPE_LABEL, type SetType } from '../lib/session';
 import styles from './SessionDetails.module.css';
 
@@ -11,13 +13,24 @@ export interface SessionDetailExercise {
   sets: { type: SetType; weight: number; reps: number }[];
 }
 
-/** Exercícios, séries, repetições e cargas de uma sessão concluída (como no histórico). */
+/**
+ * Exercícios, séries, repetições e cargas de uma sessão concluída (como no histórico).
+ * Exercícios do catálogo levam à evolução deles.
+ */
 export function SessionExercises({ exercises, notes }: { exercises: SessionDetailExercise[]; notes: string | null }) {
   return (
     <>
       {exercises.map((exercise, index) => (
         <div key={`${exercise.name}-${index}`} className={styles.exercise}>
-          <h3>{exercise.name}</h3>
+          <h3>
+            {exercise.exerciseId ? (
+              <Link href={progressPath(exercise.exerciseId)} title="Ver evolução deste exercício">
+                {exercise.name} <span aria-hidden="true">📈</span>
+              </Link>
+            ) : (
+              exercise.name
+            )}
+          </h3>
           <ol>
             {exercise.sets.map((set, setIndex) => (
               <li key={setIndex}>

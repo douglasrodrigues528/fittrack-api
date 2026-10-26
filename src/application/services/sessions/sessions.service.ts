@@ -9,6 +9,7 @@ import {
   And,
   DataSource,
   EntityManager,
+  In,
   LessThan,
   MoreThanOrEqual,
   QueryFailedError,
@@ -25,12 +26,14 @@ import {
   SessionProgressDto,
   StartSessionDto,
 } from '../../dto/session-progress.dto';
+import { ExerciseEntity } from '../../../infra/database/entities/exercise.entity';
 import { SessionSetEntity } from '../../../infra/database/entities/session-set.entity';
 import {
   WorkoutSessionEntity,
   type SessionProgress,
 } from '../../../infra/database/entities/workout-session.entity';
 import { WorkoutEntity } from '../../../infra/database/entities/workout.entity';
+import { buildExerciseProgress } from './exercise-progress';
 import { resolveLastPerformance } from './last-performance';
 import { groupExercises, resolveOrigin, toSessionView } from './session-view';
 
@@ -105,6 +108,9 @@ export class SessionsService {
 
     @InjectRepository(WorkoutEntity)
     private readonly workoutsRepository: Repository<WorkoutEntity>,
+
+    @InjectRepository(ExerciseEntity)
+    private readonly exercisesRepository: Repository<ExerciseEntity>,
 
     private readonly dataSource: DataSource,
   ) {}
@@ -445,6 +451,127 @@ export class SessionsService {
     if (!session) throw new NotFoundException('Sessão não encontrada');
     await this.sessionsRepository.remove(session);
     return { message: 'Sessão removida com sucesso' };
+  }
+
+  /**
+   * Evolução de um exercício do catálogo: as sessões CONCLUÍDAS do usuário em que ele foi feito
+   * (as `limit` mais recentes pelo início), a maior carga de cada uma e o recorde de todo o
+   * histórico. Só leitura; não interfere na referência da próxima execução (last-performance).
+   */
+  async findExerciseProgress(
+    exerciseId: string,
+    userId: string,
+    limit: number,
+  ) {
+    const ofExercise = () =>
+      this.setsRepository
+        .createQueryBuilder('s')
+        .innerJoin('s.session', 'session')
+        .where('session.userId = :userId', { userId })
+        .andWhere('session.status = :status', { status: 'completed' })
+        .andWhere('s.exerciseId = :exerciseId', { exerciseId });
+
+    const [catalog, recentRows, totalRow, recordRow] = await Promise.all([
+      this.exercisesRepository.findOne({
+        where: { id: exerciseId },
+        select: { id: true, name: true },
+      }),
+      ofExercise()
+        .select('session.id', 'id')
+        .addSelect('session.startedAt', 'startedAt')
+        .groupBy('session.id')
+        .orderBy('session.startedAt', 'DESC')
+        .addOrderBy('session.id', 'DESC')
+        .limit(limit)
+        .getRawMany<{ id: string }>(),
+      ofExercise()
+        .select('COUNT(DISTINCT session.id)', 'total')
+        .getRawOne<{ total: string }>(),
+      // Recorde de todo o histórico: maior carga válida; empate, mais repetições; persistindo, a 1ª vez.
+      ofExercise()
+        .andWhere('s.weight > 0 AND s.reps > 0')
+        .select('s.weight', 'weight')
+        .addSelect('s.reps', 'reps')
+        .addSelect('s.type', 'type')
+        .addSelect('session.id', 'sessionId')
+        .addSelect('session.title', 'title')
+        .addSelect('session.startedAt', 'startedAt')
+        .orderBy('s.weight', 'DESC')
+        .addOrderBy('s.reps', 'DESC')
+        .addOrderBy('session.startedAt', 'ASC')
+        .addOrderBy('s.exerciseOrder', 'ASC')
+        .addOrderBy('s.setOrder', 'ASC')
+        .limit(1)
+        .getRawOne<{
+          weight: string;
+          reps: number;
+          type: string;
+          sessionId: string;
+          title: string;
+          startedAt: Date;
+        }>(),
+    ]);
+
+    const ids = recentRows.map((row) => row.id);
+    if (!catalog && !ids.length)
+      throw new NotFoundException('Exercício não encontrado');
+
+    // Só as sessões da janela e só as séries deste exercício (sem carregar o histórico inteiro).
+    const [sessions, sets] = ids.length
+      ? await Promise.all([
+          this.sessionsRepository.find({
+            where: { id: In(ids), userId, status: 'completed' },
+            select: {
+              id: true,
+              workoutId: true,
+              origin: true,
+              title: true,
+              startedAt: true,
+              finishedAt: true,
+            },
+          }),
+          this.setsRepository.find({
+            where: { sessionId: In(ids), exerciseId },
+            select: {
+              sessionId: true,
+              exerciseName: true,
+              exerciseOrder: true,
+              setOrder: true,
+              type: true,
+              weight: true,
+              reps: true,
+            },
+          }),
+        ])
+      : [[], []];
+
+    const progress = buildExerciseProgress(
+      sessions.map((session) => ({
+        ...session,
+        origin: resolveOrigin(session),
+      })),
+      sets,
+    );
+
+    return {
+      exerciseId,
+      // Nome do catálogo; sem ele, o nome gravado no treino.
+      name: catalog?.name ?? sets[0]?.exerciseName ?? exerciseId,
+      totalSessions: Number(totalRow?.total ?? 0),
+      limit,
+      record: recordRow
+        ? {
+            weight: parseFloat(recordRow.weight),
+            reps: Number(recordRow.reps),
+            type: recordRow.type,
+            sessionId: recordRow.sessionId,
+            title: recordRow.title,
+            startedAt: recordRow.startedAt,
+          }
+        : null,
+      points: progress.points,
+      sessions: progress.sessions,
+    };
   }
 
   /**

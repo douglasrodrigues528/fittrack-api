@@ -31,3 +31,9 @@
   color: #991b1b;
   font-weight: 600;
 }
+
+.exercise h3 a {
+  color: #245f56;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

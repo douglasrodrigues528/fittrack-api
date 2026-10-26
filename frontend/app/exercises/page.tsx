@@ -7,6 +7,7 @@ import { cx } from '../../components/cx';
 import ui from '../../components/ui.module.css';
 import { api } from '../../services/api';
 import { catalogLabel, sortByLabel } from '../../lib/catalog-labels';
+import { progressPath } from '../../lib/exercise-progress';
 import { addCatalogExerciseToSession, countInSession, startEmptySession } from '../../lib/session';
 import { beginLiveSession } from '../../lib/session-sync';
 import { editLive, liveStore, useLiveSession } from '../../lib/use-live-session';
@@ -485,6 +486,9 @@ function ExercisesCatalog() {
                       ✓ No treino{inWorkout > 1 ? ` ×${inWorkout}` : ''}
                     </span>
                   )}
+                  <Link href={progressPath(exercise.id)} className={styles.progressLink}>
+                    📈 Ver minha evolução
+                  </Link>
                 </div>
               </div>
             </article>
