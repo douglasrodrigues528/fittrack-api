@@ -10,7 +10,7 @@ import {
   weightRangeLabel,
   type LoadSuggestion,
 } from '../load-suggestion';
-import { startSession, type ExercisePerformance, type LiveSession } from '../session';
+import { formatPrevious, startSession, type ExercisePerformance, type LiveSession } from '../session';
 
 type Done = [weight: number, reps: number, type?: string];
 
@@ -73,7 +73,7 @@ describe('suggestLoad', () => {
     assert.deepEqual(s.lastWeights, [60, 60, 60]);
     assert.deepEqual(s.suggestedWeights, [62.5, 62.5, 62.5]);
     assert.equal(s.increment, 2.5);
-    assert.match(s.reason, /completou as 3 séries planejadas com 10 repetições/);
+    assert.equal(s.reason, 'Você completou as 3 séries de 10 repetições na última sessão.');
   });
 
   it('pirâmide planejada: aumenta todas as séries pelo mesmo incremento', () => {
@@ -92,7 +92,7 @@ describe('suggestLoad', () => {
       ),
     );
     assert.deepEqual(s.suggestedWeights, [44.5, 49.5]);
-    assert.match(s.reason, /com 12 e 10 repetições/);
+    assert.equal(s.reason, 'Você completou as 2 séries planejadas (12 e 10 repetições) na última sessão.');
   });
 
   it('2. abaixo do objetivo em uma série → mantém, explicando qual', () => {
@@ -113,7 +113,7 @@ describe('suggestLoad', () => {
     assert.deepEqual(s, {
       kind: 'maintain',
       lastWeights: [60, 60, 60],
-      reason: 'No último treino você fez 8 de 10 repetições na 2ª série. Mantenha a carga até atingir o objetivo.',
+      reason: 'Na última sessão a 2ª série teve 8 de 10 repetições.',
     });
   });
 
@@ -125,20 +125,20 @@ describe('suggestLoad', () => {
     ];
     const several = suggestLoad(perf(plan, [[60, 10], [60, 7], [60, 6]]));
     assert.equal(several?.kind, 'maintain');
-    assert.match(several!.reason, /2 séries ficaram abaixo do objetivo \(ex\.: 7 de 10 repetições na 2ª série\)/);
+    assert.equal(several!.reason, 'Na última sessão 2 séries ficaram abaixo das repetições planejadas.');
 
     const fewer = suggestLoad(perf(plan, [[60, 12], [60, 12]]));
     assert.equal(fewer?.kind, 'maintain');
-    assert.match(fewer!.reason, /2 de 3 séries planejadas/);
+    assert.equal(fewer!.reason, 'Na última sessão você fez 2 de 3 séries.');
 
     const failure = suggestLoad(perf(plan, [[60, 10], [60, 10], [60, 10, 'failure']]));
     assert.equal(failure?.kind, 'maintain');
-    assert.match(failure!.reason, /3ª série .* marcada como falha/);
+    assert.equal(failure!.reason, 'Na última sessão a 3ª série foi marcada como falha.');
 
     // Atingiu as repetições baixando o peso: não é consistência.
     const dropped = suggestLoad(perf(plan, [[60, 10], [60, 10], [55, 10]]));
     assert.equal(dropped?.kind, 'maintain');
-    assert.match(dropped!.reason, /carga variou entre as séries \(60 kg → 55 kg na 3ª\)/);
+    assert.equal(dropped!.reason, 'Na última sessão a carga caiu de 60 kg para 55 kg na 3ª série.');
 
     // Só a série isolada mais forte não basta: o drop set não conta como série de trabalho.
     const withDrop = suggestLoad(perf(plan, [[60, 10], [60, 9], [40, 12, 'drop']]));
@@ -257,5 +257,15 @@ describe('aplicar a sugestão na sessão', () => {
   it('rótulos de carga', () => {
     assert.equal(weightRangeLabel([60, 60]), '60 kg');
     assert.equal(weightRangeLabel([42, 47.5]), '42–47,5 kg');
+    // Coluna "Anterior" do treino: vírgula decimal e espaço antes da unidade.
+    assert.equal(formatPrevious({ type: 'normal', weight: 62.5, reps: 8 }), '62,5 kg × 8');
+    assert.equal(formatPrevious({ type: 'normal', weight: 60, reps: 10 }), '60 kg × 10');
+    assert.equal(formatPrevious(undefined), '—');
+  });
+
+  it('texto do aumento com uma série só', () => {
+    const s = increase(suggestLoad(perf([[40, 12]], [[40, 12]])));
+    assert.equal(s.reason, 'Você completou a série de 12 repetições na última sessão.');
+    assert.deepEqual(s.suggestedWeights, [42]);
   });
 });

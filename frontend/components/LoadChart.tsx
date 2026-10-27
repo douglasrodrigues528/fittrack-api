@@ -110,7 +110,10 @@ export default function LoadChart({ points, sessions }: { points: ProgressPoint[
     <figure className={styles.figure}>
       {row && (
         <figcaption className={styles.summary} aria-live="polite">
-          <span className={styles.summaryDate}>{fullDateLabel(row.startedAt)}</span>
+          <span className={styles.summaryDate}>
+            {current === points.length - 1 ? 'Última sessão' : 'Sessão selecionada'} ·{' '}
+            {fullDateLabel(row.startedAt)}
+          </span>
           <span className={styles.summaryValue}>
             <strong>{formatKg(row.weight)}</strong>
             <span className={styles.times} aria-hidden="true">
@@ -118,19 +121,19 @@ export default function LoadChart({ points, sessions }: { points: ProgressPoint[
             </span>
             <span className={styles.srOnly}>com</span>
             <strong>
-              {row.reps} {row.reps === 1 ? 'rep' : 'reps'}
+              {row.reps} {row.reps === 1 ? 'repetição' : 'repetições'}
             </strong>
           </span>
           <span className={styles.summaryMeta}>
             <span className={styles.chip}>
-              {row.setCount} {row.setCount === 1 ? 'série' : 'séries'} na sessão
+              {row.setCount} {row.setCount === 1 ? 'série' : 'séries'}
             </span>
             <span className={styles.compare}>
               {comparison
-                ? `${comparisonLabel(comparison)} vs. ${shortDateLabel(comparison.previous.startedAt)}`
+                ? `${comparisonLabel(comparison)} em relação a ${shortDateLabel(comparison.previous.startedAt)}`
                 : points.length > 1
-                  ? 'Primeira sessão do gráfico'
-                  : 'Única sessão até agora: conclua mais treinos para comparar'}
+                  ? 'Primeira sessão do período'
+                  : 'Conclua mais treinos para comparar.'}
             </span>
           </span>
         </figcaption>
@@ -139,11 +142,11 @@ export default function LoadChart({ points, sessions }: { points: ProgressPoint[
       <div className={styles.legend} aria-hidden="true">
         <span className={styles.legendItem}>
           <span className={styles.swatchLine} />
-          Carga da série mais pesada (kg)
+          Carga (kg)
         </span>
         <span className={styles.legendItem}>
           <span className={styles.swatchBar} />
-          Repetições dessa série
+          Repetições
         </span>
       </div>
 
@@ -280,7 +283,7 @@ export default function LoadChart({ points, sessions }: { points: ProgressPoint[
             <tr>
               <th scope="col">Data</th>
               <th scope="col">Carga</th>
-              <th scope="col">Reps</th>
+              <th scope="col">Repetições</th>
               <th scope="col">Séries</th>
             </tr>
           </thead>

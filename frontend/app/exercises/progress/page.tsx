@@ -122,13 +122,13 @@ function ExerciseProgressView() {
       {back}
       <header>
         <h1 className={cx(ui.pageTitle, styles.title)}>{data.name}</h1>
-        <p className={ui.pageSubtitle}>Evolução das suas cargas neste exercício, só com treinos concluídos.</p>
+        <p className={ui.pageSubtitle}>Com base nos seus treinos concluídos.</p>
       </header>
 
       {data.totalSessions === 0 ? (
         <div className={cx(ui.card, ui.emptyState)}>
           <h2 className={ui.sectionTitle}>Ainda sem histórico</h2>
-          <p>Quando você concluir um treino com este exercício, a evolução das cargas aparece aqui.</p>
+          <p>Conclua um treino com este exercício para acompanhar a evolução aqui.</p>
           <div className={styles.emptyActions}>
             <Link href="/train" className={cx(ui.btn, ui.btnPrimary)}>
               Começar treino livre
@@ -142,7 +142,7 @@ function ExerciseProgressView() {
         <>
           <section className={cx(ui.card, styles.record)} aria-labelledby="record-title">
             <h2 id="record-title" className={styles.cardTitle}>
-              🏆 Recorde pessoal
+              Recorde pessoal
             </h2>
             {record ? (
               <>
@@ -156,33 +156,31 @@ function ExerciseProgressView() {
                 </p>
               </>
             ) : (
-              <p className={styles.muted}>
-                Nenhuma série com carga registrada (por exemplo, só com o peso do corpo).
-              </p>
+              <p className={styles.muted}>Ainda não há séries com carga (só peso corporal).</p>
             )}
           </section>
 
           <section className={cx(ui.card, styles.chartCard)} aria-labelledby="chart-title">
             <h2 id="chart-title" className={styles.cardTitle}>
-              Carga e repetições por sessão
+              Carga e repetições
             </h2>
             <p className={styles.note}>
-              A série mais pesada de cada treino, pela data de início. Toque no gráfico para escolher uma sessão.
+              Cada sessão aparece com a sua série mais pesada. Toque no gráfico para ver outra sessão.
             </p>
             {points.length > 0 ? (
               <LoadChart points={points} sessions={sessions} />
             ) : (
-              <p className={styles.muted}>Nenhuma carga registrada para desenhar o gráfico.</p>
+              <p className={styles.muted}>Ainda não há cargas para mostrar no gráfico.</p>
             )}
           </section>
 
           <section className={styles.history} aria-labelledby="history-title">
             <h2 id="history-title" className={cx(ui.sectionTitle, styles.historyTitle)}>
-              Histórico do exercício
+              Histórico
             </h2>
             {data.totalSessions > sessions.length && (
               <p className={styles.note}>
-                Mostrando as {sessions.length} sessões mais recentes de {data.totalSessions}. O recorde considera
+                Exibindo as {sessions.length} sessões mais recentes de {data.totalSessions}. O recorde considera
                 todas.
               </p>
             )}
@@ -209,7 +207,7 @@ function ExerciseProgressView() {
                       </span>
                       {session.best && (
                         <span>
-                          Maior: {formatKg(session.best.weight)} × {session.best.reps}
+                          Mais pesada: {formatKg(session.best.weight)} × {session.best.reps}
                         </span>
                       )}
                     </span>
@@ -227,7 +225,7 @@ function ExerciseProgressView() {
                       aria-expanded={open}
                       onClick={() => setOpenId(open ? null : session.sessionId)}
                     >
-                      {open ? 'Ocultar treino completo' : 'Ver treino completo'}
+                      {open ? 'Ocultar sessão completa' : 'Ver sessão completa'}
                     </button>
                   </div>
                   {open && (

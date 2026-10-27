@@ -52,12 +52,15 @@ export function incrementFor(load: number): number {
 const ordinal = (index: number) => `${index + 1}ª`;
 const kg = (value: number) => `${value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} kg`;
 
-function repsGoalText(planned: { reps: number }[]): string {
-  const reps = planned.map((set) => set.reps);
-  if (reps.every((value) => value === reps[0])) return `${reps[0]} repetições`;
+/** "Você completou as 3 séries de 10 repetições na última sessão." (texto curto para o cartão). */
+function completedText(reps: number[]): string {
+  if (reps.length === 1) return `Você completou a série de ${reps[0]} repetições na última sessão.`;
+  if (reps.every((value) => value === reps[0])) {
+    return `Você completou as ${reps.length} séries de ${reps[0]} repetições na última sessão.`;
+  }
   const list = reps.join(', ');
   const last = list.lastIndexOf(', ');
-  return `${list.slice(0, last)} e ${list.slice(last + 2)} repetições`;
+  return `Você completou as ${reps.length} séries planejadas (${list.slice(0, last)} e ${list.slice(last + 2)} repetições) na última sessão.`;
 }
 
 /**
@@ -81,30 +84,24 @@ export function suggestLoad(performance: ExercisePerformance | undefined): LoadS
   const maintain = (reason: string): LoadSuggestion => ({ kind: 'maintain', lastWeights, reason });
 
   if (work.length < planned.length) {
-    return maintain(
-      `No último treino você fez ${work.length} de ${planned.length} séries planejadas. ` +
-        'Mantenha a carga até completar todas.',
-    );
+    return maintain(`Na última sessão você fez ${work.length} de ${planned.length} séries.`);
   }
 
   const target = work.slice(0, planned.length);
   const shortIndex = target.findIndex((set, index) => set.reps < Number(planned[index].reps));
   if (shortIndex >= 0) {
     const shortCount = target.filter((set, index) => set.reps < Number(planned[index].reps)).length;
-    const detail = `${target[shortIndex].reps} de ${planned[shortIndex].reps} repetições na ${ordinal(shortIndex)} série`;
     return maintain(
       shortCount > 1
-        ? `No último treino ${shortCount} séries ficaram abaixo do objetivo (ex.: ${detail}). Mantenha a carga.`
-        : `No último treino você fez ${detail}. Mantenha a carga até atingir o objetivo.`,
+        ? `Na última sessão ${shortCount} séries ficaram abaixo das repetições planejadas.`
+        : `Na última sessão a ${ordinal(shortIndex)} série teve ${target[shortIndex].reps} de ` +
+            `${planned[shortIndex].reps} repetições.`,
     );
   }
 
   const failureIndex = target.findIndex((set) => set.type === 'failure');
   if (failureIndex >= 0) {
-    return maintain(
-      `A ${ordinal(failureIndex)} série do último treino foi marcada como falha. ` +
-        'Repita a carga antes de aumentar.',
-    );
+    return maintain(`Na última sessão a ${ordinal(failureIndex)} série foi marcada como falha.`);
   }
 
   // Consistência: a carga não pode ter caído entre as séries mais do que o próprio plano prevê
@@ -114,8 +111,8 @@ export function suggestLoad(performance: ExercisePerformance | undefined): LoadS
     const doneStep = target[index].weight - target[0].weight;
     if (doneStep < plannedStep - 1e-9) {
       return maintain(
-        `No último treino a carga variou entre as séries (${kg(target[0].weight)} → ` +
-          `${kg(target[index].weight)} na ${ordinal(index)}). Mantenha a carga até completar todas com ela.`,
+        `Na última sessão a carga caiu de ${kg(target[0].weight)} para ${kg(target[index].weight)} ` +
+          `na ${ordinal(index)} série.`,
       );
     }
   }
@@ -129,9 +126,7 @@ export function suggestLoad(performance: ExercisePerformance | undefined): LoadS
     lastWeights,
     suggestedWeights,
     increment,
-    reason:
-      `No último treino você completou as ${planned.length} ${planned.length === 1 ? 'série planejada' : 'séries planejadas'} ` +
-      `com ${repsGoalText(planned.map((set) => ({ reps: Number(set.reps) })))}, sem falha e sem baixar a carga.`,
+    reason: completedText(planned.map((set) => Number(set.reps))),
   };
 }
 

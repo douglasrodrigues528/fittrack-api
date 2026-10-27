@@ -543,8 +543,9 @@ export function formatClock(totalSeconds: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
+/** "62,5 kg × 8" (vírgula decimal e espaço antes da unidade). */
 export function formatPrevious(set: PreviousSet | undefined): string {
-  return set ? `${set.weight}kg × ${set.reps}` : '—';
+  return set ? `${set.weight.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} kg × ${set.reps}` : '—';
 }
 
 /* ---------------------------- leitura defensiva ------------------------- */

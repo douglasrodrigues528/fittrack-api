@@ -255,16 +255,16 @@ describe('comparação e densidade', () => {
     const b = compareWithPrevious(points, 1)!;
     assert.equal(b.previous.sessionId, 'a');
     assert.deepEqual([b.weightDelta, b.repsDelta], [2, -2]);
-    assert.equal(comparisonLabel(b), '+2 kg · −2 reps');
-    assert.equal(comparisonLabel(compareWithPrevious(points, 2)!), 'mesma carga · +1 rep');
-    assert.equal(comparisonLabel(compareWithPrevious(points, 3)!), '−2,5 kg · +1 rep');
+    assert.equal(comparisonLabel(b), '+2 kg · −2 repetições');
+    assert.equal(comparisonLabel(compareWithPrevious(points, 2)!), 'mesma carga · +1 repetição');
+    assert.equal(comparisonLabel(compareWithPrevious(points, 3)!), '−2,5 kg · +1 repetição');
     assert.equal(compareWithPrevious(points, 9), null);
   });
 
   it('cargas fracionadas não geram dízimas na diferença', () => {
     const points = [point('2026-09-03T22:00:00.000Z', 22.1, 8), point('2026-09-10T22:00:00.000Z', 22.3, 8)];
     assert.equal(compareWithPrevious(points, 1)!.weightDelta, 0.2);
-    assert.equal(comparisonLabel(compareWithPrevious(points, 1)!), '+0,2 kg · mesmas reps');
+    assert.equal(comparisonLabel(compareWithPrevious(points, 1)!), '+0,2 kg · mesmas repetições');
   });
 
   it('números em todas as barras e marcadores em todos os pontos só com poucas sessões', () => {

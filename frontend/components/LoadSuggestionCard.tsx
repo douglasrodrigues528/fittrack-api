@@ -8,6 +8,8 @@ import {
 import type { LiveExercise } from '../lib/session';
 import styles from './LoadSuggestionCard.module.css';
 
+const kgNumber = (value: number) => value.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+
 /**
  * Sugestão de carga de um exercício na tela do treino. Nada muda sozinho: aplicar só acontece
  * no botão, e "Manter" apenas esconde a sugestão (as cargas ficam como estão).
@@ -28,7 +30,7 @@ export default function LoadSuggestionCard({
   const last = weightRangeLabel(suggestion.lastWeights);
 
   if (suggestion.kind === 'maintain') {
-    // Manter a carga: aviso discreto, sem ação (a carga atual já é a do último treino).
+    // Manter a carga: só um aviso discreto, sem ações (a carga atual já é a da última sessão).
     return (
       <p className={styles.maintain} role="note">
         <strong>Manter {last}.</strong> {suggestion.reason}
@@ -39,47 +41,43 @@ export default function LoadSuggestionCard({
   const state = suggestionState(exercise, suggestion);
   if (state === 'done') return null;
   const next = weightRangeLabel(suggestion.suggestedWeights);
-  const increment = suggestion.increment.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+
+  if (state === 'applied') {
+    return (
+      <div className={styles.applied} role="status">
+        <span>
+          <span aria-hidden="true">✓ </span>
+          Carga atualizada para <strong>{next}</strong>
+        </span>
+        <button type="button" className={styles.undo} onClick={onUndo} aria-label={`Desfazer alteração: voltar para ${last}`}>
+          Desfazer alteração
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className={styles.card} role="group" aria-label={`Sugestão de carga para ${exercise.name}`}>
-      <p className={styles.title}>
-        <span aria-hidden="true">↗</span> Sugestão de carga
+    <div className={styles.card} role="group" aria-label={`Sugestão de progressão para ${exercise.name}`}>
+      <p className={styles.label}>Sugestão de progressão</p>
+      <p className={styles.values}>
+        <span className={styles.from}>
+          {last} <span aria-hidden="true">→</span>
+          <span className={styles.srOnly}> para </span>
+        </span>
+        <strong className={styles.to}>{next}</strong>
+        <span className={styles.delta}>+{kgNumber(suggestion.increment)} kg</span>
       </p>
-      <dl className={styles.values}>
-        <div>
-          <dt>Último treino</dt>
-          <dd>{last}</dd>
-        </div>
-        <div>
-          <dt>Sugerida</dt>
-          <dd className={styles.next}>
-            {next} <small>(+{increment} kg por série)</small>
-          </dd>
-        </div>
-      </dl>
-      <p className={styles.reason}>{suggestion.reason}</p>
-      <p className={styles.note}>Ajuste ao peso disponível no seu equipamento.</p>
-
-      {state === 'applied' ? (
-        <div className={styles.actions}>
-          <span className={styles.applied} role="status">
-            ✓ Sugestão aplicada às séries pendentes
-          </span>
-          <button type="button" className={styles.link} onClick={onUndo}>
-            Voltar para {last}
-          </button>
-        </div>
-      ) : (
-        <div className={styles.actions}>
-          <button type="button" className={styles.apply} onClick={onApply}>
-            Aplicar {next}
-          </button>
-          <button type="button" className={styles.keep} onClick={onDismiss}>
-            Manter {last}
-          </button>
-        </div>
-      )}
+      <p className={styles.reason}>
+        {suggestion.reason} <span className={styles.hint}>Use o peso mais próximo disponível.</span>
+      </p>
+      <div className={styles.actions}>
+        <button type="button" className={styles.apply} onClick={onApply} aria-label={`Aplicar ${next} nas séries pendentes`}>
+          Aplicar sugestão
+        </button>
+        <button type="button" className={styles.keep} onClick={onDismiss} aria-label={`Manter ${last}`}>
+          Manter carga
+        </button>
+      </div>
     </div>
   );
 }
