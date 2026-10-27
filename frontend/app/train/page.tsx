@@ -16,6 +16,14 @@ import {
   type SyncState,
 } from '../../lib/session-sync';
 import { makeUid, TOKEN_KEY } from '../../lib/use-workout-draft';
+import { api } from '../../services/api';
+import LoadSuggestionCard from '../../components/LoadSuggestionCard';
+import {
+  applySuggestion,
+  performanceByExercise,
+  revertSuggestion,
+  suggestLoad,
+} from '../../lib/load-suggestion';
 import {
   SET_TYPE_LABEL,
   SET_TYPES,
@@ -36,12 +44,33 @@ import {
   toggleSetDone,
   updateLiveSet,
   validateFinish,
+  type ExercisePerformance,
   type LiveSet,
   type SetType,
 } from '../../lib/session';
 import styles from './train.module.css';
 
 const TYPE_LETTER: Record<SetType, string> = { warmup: 'A', normal: '', drop: 'D', failure: 'F' };
+
+/** Sugestões de carga dispensadas ("Manter"), por exercício da sessão (o uid é único). */
+const DISMISSED_KEY = 'fittrack:load-suggestion-dismissed';
+
+function readDismissed(): string[] {
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem(DISMISSED_KEY) ?? '[]');
+    return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeDismissed(uids: string[]) {
+  try {
+    localStorage.setItem(DISMISSED_KEY, JSON.stringify(uids.slice(-200)));
+  } catch {
+    /* sem armazenamento: a sugestão só volta a aparecer */
+  }
+}
 
 function nextType(type: SetType): SetType {
   return SET_TYPES[(SET_TYPES.indexOf(type) + 1) % SET_TYPES.length];
@@ -78,6 +107,39 @@ export default function TrainPage() {
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
   const [newExercise, setNewExercise] = useState('');
+  // Referência da rotina (a mesma usada ao iniciar): objetivo planejado + último treino concluído.
+  const [reference, setReference] = useState<{ workoutId: string; exercises: ExercisePerformance[] } | null>(null);
+  const [dismissed, setDismissed] = useState<string[]>(() => (typeof window === 'undefined' ? [] : readDismissed()));
+  const workoutId = session?.origin === 'planned' ? session.workoutId : null;
+
+  // Só leitura: buscar a referência não altera a sessão, a rotina nem o histórico.
+  useEffect(() => {
+    if (!workoutId) return;
+    let cancelled = false;
+    api
+      .get<{ exercises: ExercisePerformance[] }>(`/sessions/last-performance/${workoutId}`)
+      .then((response) => {
+        if (!cancelled) setReference({ workoutId, exercises: response.data.exercises ?? [] });
+      })
+      .catch((error: unknown) => {
+        // Sem referência (sem conexão, rotina excluída...): simplesmente não há sugestão.
+        console.warn('Sugestões de carga indisponíveis.', error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [workoutId]);
+
+  const references =
+    session && reference && reference.workoutId === workoutId
+      ? performanceByExercise(session.exercises, reference.exercises)
+      : new Map<string, ExercisePerformance>();
+
+  function dismissSuggestion(exerciseUid: string) {
+    const next = [...dismissed.filter((uid) => uid !== exerciseUid), exerciseUid];
+    setDismissed(next);
+    writeDismissed(next);
+  }
 
   useEffect(() => {
     if (!localStorage.getItem(TOKEN_KEY)) router.replace('/');
@@ -431,6 +493,24 @@ export default function TrainPage() {
             </button>
             </div>
           </div>
+
+          {(() => {
+            const suggestion = dismissed.includes(exercise.uid) ? null : suggestLoad(references.get(exercise.uid));
+            if (!suggestion) return null;
+            return (
+              <LoadSuggestionCard
+                exercise={exercise}
+                suggestion={suggestion}
+                onApply={() =>
+                  suggestion.kind === 'increase' && editLive((c) => applySuggestion(c, exercise.uid, suggestion))
+                }
+                onUndo={() =>
+                  suggestion.kind === 'increase' && editLive((c) => revertSuggestion(c, exercise.uid, suggestion))
+                }
+                onDismiss={() => dismissSuggestion(exercise.uid)}
+              />
+            );
+          })()}
 
           <div className={styles.colHead}>
             <span>Série</span>

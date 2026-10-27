@@ -1,0 +1,117 @@
+/* Sugestão de carga na tela do treino (opcional; nunca aplicada sozinha). */
+
+.card {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border: 1px solid #cfe3dc;
+  border-radius: var(--ft-radius-sm);
+  background: #f2f7f5;
+  color: #3b4a54;
+  font-size: 0.88rem;
+}
+
+.title {
+  margin: 0 0 6px;
+  color: #245f56;
+  font-weight: 800;
+}
+
+.values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  margin: 0;
+}
+
+.values div {
+  min-width: 0;
+}
+
+.values dt {
+  color: #61707b;
+  font-size: 0.78rem;
+}
+
+.values dd {
+  margin: 0;
+  color: var(--ft-ink);
+  font-size: 1rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.next {
+  color: #245f56 !important;
+}
+
+.next small {
+  color: #61707b;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.reason {
+  margin: 6px 0 0;
+}
+
+.note {
+  margin: 2px 0 0;
+  color: #61707b;
+  font-size: 0.8rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.apply,
+.keep {
+  min-height: 44px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 10px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.apply {
+  background: #245f56;
+  color: #fff;
+}
+
+.keep {
+  background: #e5eceb;
+  color: #1f3b37;
+}
+
+.applied {
+  color: #14532d;
+  font-weight: 700;
+}
+
+.link {
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #245f56;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.maintain {
+  margin: 0 0 8px;
+  color: #61707b;
+  font-size: 0.82rem;
+}
+
+.maintain strong {
+  color: #3b4a54;
+}
