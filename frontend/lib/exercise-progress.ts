@@ -277,12 +277,14 @@ export function compareWithPrevious(points: ProgressPoint[], index: number): Com
 const signed = (value: number) =>
   `${value > 0 ? '+' : '−'}${Math.abs(value).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}`;
 
-/** "+2,5 kg · −1 rep" / "mesma carga · +2 reps": símbolos e palavras, não só cor. */
+/** "+2,5 kg · −1 repetição" / "mesma carga · +2 repetições": sinais e palavras, não só cor. */
 export function comparisonLabel(comparison: Comparison): string {
   const { weightDelta, repsDelta } = comparison;
   const weight = weightDelta === 0 ? 'mesma carga' : `${signed(weightDelta)} kg`;
   const reps =
-    repsDelta === 0 ? 'mesmas reps' : `${signed(repsDelta)} ${Math.abs(repsDelta) === 1 ? 'rep' : 'reps'}`;
+    repsDelta === 0
+      ? 'mesmas repetições'
+      : `${signed(repsDelta)} ${Math.abs(repsDelta) === 1 ? 'repetição' : 'repetições'}`;
   return `${weight} · ${reps}`;
 }
 

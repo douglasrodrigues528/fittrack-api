@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '../services/api';
-import { progressPath } from '../lib/exercise-progress';
+import { formatKg, progressPath } from '../lib/exercise-progress';
 import { SET_TYPE_LABEL, type SetType } from '../lib/session';
 import styles from './SessionDetails.module.css';
 
@@ -25,7 +25,7 @@ export function SessionExercises({ exercises, notes }: { exercises: SessionDetai
           <h3>
             {exercise.exerciseId ? (
               <Link href={progressPath(exercise.exerciseId)} title="Ver evolução deste exercício">
-                {exercise.name} <span aria-hidden="true">📈</span>
+                {exercise.name}
               </Link>
             ) : (
               exercise.name
@@ -34,7 +34,7 @@ export function SessionExercises({ exercises, notes }: { exercises: SessionDetai
           <ol>
             {exercise.sets.map((set, setIndex) => (
               <li key={setIndex}>
-                {set.weight}kg × {set.reps}
+                {formatKg(set.weight)} × {set.reps}
                 {set.type !== 'normal' && <em> · {SET_TYPE_LABEL[set.type]}</em>}
               </li>
             ))}

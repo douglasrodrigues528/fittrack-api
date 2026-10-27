@@ -487,7 +487,7 @@ function ExercisesCatalog() {
                     </span>
                   )}
                   <Link href={progressPath(exercise.id)} className={styles.progressLink}>
-                    📈 Ver minha evolução
+                    Ver minha evolução
                   </Link>
                 </div>
               </div>
