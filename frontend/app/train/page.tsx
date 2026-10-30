@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type FocusEvent, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type FocusEvent, type KeyboardEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { editLive, liveStore, useLiveSession, useNow } from '../../lib/use-live-session';
@@ -36,6 +36,7 @@ import {
   moveLiveExercise,
   removeLiveExercise,
   removeLiveSet,
+  restoreLiveSet,
   restRemainingSeconds,
   sessionStats,
   setRestDuration,
@@ -51,6 +52,18 @@ import {
 import styles from './train.module.css';
 
 const TYPE_LETTER: Record<SetType, string> = { warmup: 'A', normal: '', drop: 'D', failure: 'F' };
+
+/** Por quanto tempo a remoção de uma série pode ser desfeita. */
+const UNDO_REMOVE_MS = 8000;
+
+/** Série removida que ainda pode voltar: a própria série e a posição em que estava. */
+interface RemovedSet {
+  exerciseUid: string;
+  set: LiveSet;
+  index: number;
+  /** Identifica cada remoção (uma nova substitui a anterior e reinicia o prazo). */
+  key: number;
+}
 
 /** Sugestões de carga dispensadas ("Manter"), por exercício da sessão (o uid é único). */
 const DISMISSED_KEY = 'fittrack:load-suggestion-dismissed';
@@ -107,6 +120,36 @@ export default function TrainPage() {
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
   const [newExercise, setNewExercise] = useState('');
+  const [removedSet, setRemovedSet] = useState<RemovedSet | null>(null);
+  const undoRef = useRef<HTMLButtonElement>(null);
+
+  // O aviso de desfazer some sozinho; a remoção já está salva desde o toque.
+  useEffect(() => {
+    if (!removedSet) return;
+    const timer = window.setTimeout(() => setRemovedSet(null), UNDO_REMOVE_MS);
+    return () => window.clearTimeout(timer);
+  }, [removedSet]);
+
+  // O botão removido levava o foco; ele passa para "Desfazer" (teclado e leitor de tela não se perdem).
+  useEffect(() => {
+    if (removedSet) undoRef.current?.focus({ preventScroll: true });
+  }, [removedSet]);
+
+  function handleRemoveSet(exerciseUid: string, setUid: string) {
+    const current = liveStore.getSnapshot();
+    const exercise = current?.exercises.find((item) => item.uid === exerciseUid);
+    const index = exercise ? exercise.sets.findIndex((item) => item.uid === setUid) : -1;
+    if (!exercise || index < 0) return;
+    editLive((c) => removeLiveSet(c, exerciseUid, setUid));
+    setRemovedSet({ exerciseUid, set: exercise.sets[index], index, key: Date.now() });
+  }
+
+  function handleUndoRemove() {
+    if (!removedSet) return;
+    const { exerciseUid, set, index } = removedSet;
+    editLive((c) => restoreLiveSet(c, exerciseUid, set, index));
+    setRemovedSet(null);
+  }
   // Referência da rotina (a mesma usada ao iniciar): objetivo planejado + último treino concluído.
   const [reference, setReference] = useState<{ workoutId: string; exercises: ExercisePerformance[] } | null>(null);
   const [dismissed, setDismissed] = useState<string[]>(() => (typeof window === 'undefined' ? [] : readDismissed()));
@@ -343,7 +386,7 @@ export default function TrainPage() {
           type="button"
           className={styles.removeSet}
           aria-label={`Remover série ${index + 1}`}
-          onClick={() => editLive((c) => removeLiveSet(c, exerciseUid, set.uid))}
+          onClick={() => handleRemoveSet(exerciseUid, set.uid)}
         >
           ✕
         </button>
@@ -521,9 +564,25 @@ export default function TrainPage() {
             <span />
           </div>
 
-          {exercise.sets.map((set, index) =>
-            renderSet(exercise.uid, set, index, formatPrevious(exercise.previous[index])),
-          )}
+          {(() => {
+            const rows = exercise.sets.map((set, index) =>
+              renderSet(exercise.uid, set, index, formatPrevious(exercise.previous[index])),
+            );
+            // A série removida dá lugar, na mesma posição, a um aviso discreto com "Desfazer".
+            if (removedSet && removedSet.exerciseUid === exercise.uid) {
+              rows.splice(
+                Math.min(removedSet.index, rows.length),
+                0,
+                <div key={`removida-${removedSet.key}`} className={styles.undoRow} role="status">
+                  <span>Série {removedSet.index + 1} removida</span>
+                  <button ref={undoRef} type="button" className={styles.undoBtn} onClick={handleUndoRemove}>
+                    Desfazer
+                  </button>
+                </div>,
+              );
+            }
+            return rows;
+          })()}
 
           <button
             type="button"

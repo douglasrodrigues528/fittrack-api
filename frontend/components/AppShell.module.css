@@ -81,7 +81,7 @@
   padding: 6px 2px;
   border-top: 3px solid transparent;
   color: #d1d5db;
-  font-size: 0.72rem;
+  font-size: 0.8rem; /* rótulos da navegação: 12,8 px */
   font-weight: 700;
   text-decoration: none;
 }

@@ -5,8 +5,13 @@
   --foreground: #171717;
 
   /* Identidade visual da área autenticada (extraída do dashboard) */
-  --ft-bg: #25a741;
+  /* Fundo da área autenticada: verde escuro o bastante para texto branco (5,08:1). */
+  --ft-bg: #1a7f37;
+  /* Verde vivo da marca: só para elementos gráficos (linhas, indicadores), nunca para texto. */
   --ft-green: #25a741;
+  /* Verde para texto e botões sobre branco (5,08:1) e seu estado de hover (6,62:1). */
+  --ft-green-text: #1a7f37;
+  --ft-green-hover: #156b2e;
   --ft-ink: #111827;
   --ft-surface: #ffffff;
   --ft-text: #333333;

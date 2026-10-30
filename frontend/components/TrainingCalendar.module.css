@@ -19,10 +19,22 @@
   font-weight: 800;
 }
 
+/* Link discreto com área de toque de 44 px: a margem negativa mantém a altura do cabeçalho. */
 .more {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: -11px -6px;
+  padding: 0 6px;
+  border-radius: 8px;
   color: #245f56;
   font-weight: 800;
   font-size: 0.9rem;
+}
+
+.more:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .tabs {
@@ -99,7 +111,7 @@
 .weekday {
   padding: 2px 0 4px;
   color: var(--ft-muted);
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   font-weight: 700;
   text-align: center;
 }
@@ -129,7 +141,7 @@
 
 .dayName {
   color: var(--ft-muted);
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   font-weight: 700;
 }
 
@@ -189,10 +201,15 @@
   color: #6b7280;
 }
 
+/* Dia futuro: sem fundo e com número mais leve (distinto de passado, hoje e treinado), mas legível (5,91:1). */
 .future {
   background: transparent;
-  color: #9ca3af;
+  color: #5b6573;
   cursor: default;
+}
+
+.future .dayNumber {
+  font-weight: 600;
 }
 
 .day:disabled {
@@ -323,7 +340,7 @@
   margin-left: 8px;
   padding: 1px 8px;
   border-radius: 999px;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 700;
   vertical-align: middle;
 }

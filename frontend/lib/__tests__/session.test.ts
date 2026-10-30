@@ -9,6 +9,7 @@ import {
   parseStoredSession,
   removeLiveExercise,
   removeLiveSet,
+  restoreLiveSet,
   restRemainingSeconds,
   sessionStats,
   skipRest,
@@ -144,6 +145,41 @@ describe('adicionar e remover durante o treino', () => {
     assert.deepEqual(setUids(removed, 0).length, 2);
     assert.equal(removed.exercises[1].sets.length, 1);
     assert.equal(removeLiveExercise(s, ex.uid).exercises.length, 1);
+  });
+
+  it('desfazer a remoção devolve a mesma série, na mesma posição, com carga, reps, tipo e estado', () => {
+    let s = routineSession();
+    const ex = s.exercises[0];
+    s = addLiveSet(s, ex.uid, counter());
+    // Série do meio, concluída e marcada como falha.
+    const target = s.exercises[0].sets[1];
+    s = updateLiveSet(s, ex.uid, target.uid, { weight: '47.5', reps: '9', type: 'failure' });
+    s = { ...s, exercises: s.exercises.map((e, i) => (i === 0 ? { ...e, sets: e.sets.map((x) => (x.uid === target.uid ? { ...x, done: true } : x)) } : e)) };
+    const before = s;
+    const removedSet = before.exercises[0].sets[1];
+
+    const removed = removeLiveSet(before, ex.uid, removedSet.uid);
+    assert.equal(removed.exercises[0].sets.length, 2);
+    const restored = restoreLiveSet(removed, ex.uid, removedSet, 1);
+    assert.deepEqual(restored.exercises, before.exercises);
+    assert.deepEqual(restored.exercises[0].sets[1], { ...removedSet });
+  });
+
+  it('desfazer não duplica, não sobrescreve e ignora exercício que já saiu do treino', () => {
+    const s = routineSession();
+    const ex = s.exercises[0];
+    const set = ex.sets[0];
+    // A série ainda está lá: nada muda (não duplica).
+    assert.equal(restoreLiveSet(s, ex.uid, set, 0), s);
+    // Exercício removido: nada muda.
+    const noExercise = removeLiveExercise(removeLiveSet(s, ex.uid, set.uid), ex.uid);
+    assert.equal(restoreLiveSet(noExercise, ex.uid, set, 0), noExercise);
+    // Posição além do fim: volta para o fim, sem perder as outras séries.
+    const removed = removeLiveSet(s, ex.uid, set.uid);
+    const restored = restoreLiveSet(removed, ex.uid, set, 99);
+    assert.deepEqual(setUids(restored, 0), [...setUids(removed, 0), set.uid]);
+    // O outro exercício não é tocado.
+    assert.deepEqual(restored.exercises[1], s.exercises[1]);
   });
 
   it('adiciona exercício por nome e exige nome', () => {
