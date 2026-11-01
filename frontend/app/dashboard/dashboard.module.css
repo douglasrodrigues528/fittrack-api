@@ -112,7 +112,7 @@
 .statCard strong {
   display: block;
   margin-bottom: 4px;
-  color: var(--ft-green);
+  color: var(--ft-green-text);
   font-size: 1.6rem;
   line-height: 1.1;
 }
@@ -328,7 +328,7 @@
 
 .cardTitleBlock h3 {
   margin: 0;
-  color: var(--ft-green);
+  color: var(--ft-green-text);
   font-size: 1.15rem;
   font-weight: 800;
   line-height: 1.25;

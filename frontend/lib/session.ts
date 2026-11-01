@@ -327,6 +327,21 @@ export function removeLiveSet(session: LiveSession, exerciseUid: string, setUid:
   }));
 }
 
+/**
+ * Desfaz a remoção de uma série: devolve a MESMA série (uid, tipo, carga, repetições e estado)
+ * na posição em que estava. Não faz nada se o exercício não existe mais ou se a série já está lá,
+ * para nunca duplicar nem sobrescrever outra série.
+ */
+export function restoreLiveSet(session: LiveSession, exerciseUid: string, set: LiveSet, index: number): LiveSession {
+  const exercise = session.exercises.find((item) => item.uid === exerciseUid);
+  if (!exercise || exercise.sets.some((item) => item.uid === set.uid)) return session;
+  return mapExercise(session, exerciseUid, (current) => {
+    const sets = [...current.sets];
+    sets.splice(Math.max(0, Math.min(index, sets.length)), 0, { ...set });
+    return { ...current, sets };
+  });
+}
+
 export function updateLiveSet(
   session: LiveSession,
   exerciseUid: string,
