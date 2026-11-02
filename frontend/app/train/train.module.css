@@ -1,15 +1,24 @@
 .page {
   min-width: 0;
-  /* espaço extra no fim: a barra de descanso fica fixa sobre o conteúdo */
-  padding-bottom: 88px;
+  padding-bottom: 16px;
 }
 
+/* Campos e botões focados (teclado, leitor de tela) param fora do cabeçalho fixo e da navegação. */
+.page input,
+.page select,
+.page button,
+.page textarea {
+  scroll-margin-top: calc(var(--ft-topbar-h) + 132px);
+  scroll-margin-bottom: calc(var(--ft-nav-h) + 16px);
+}
+
+/* Único bloco fixo do treino: nome + Finalizar, resumo e descanso (o descanso não flutua mais sobre as séries). */
 .header {
   position: sticky;
-  top: calc(var(--ft-topbar-h) + 8px);
+  top: calc(var(--ft-topbar-h) + 6px);
   z-index: 20;
-  margin-bottom: 12px;
-  padding: 10px 12px;
+  margin-bottom: 10px;
+  padding: 8px 10px;
   border-radius: var(--ft-radius-sm);
   background: var(--ft-ink);
   color: #fff;
@@ -52,10 +61,154 @@
 }
 
 .syncLine {
-  margin: 6px 0 0;
-  color: #aab6bd;
+  margin: 0;
+  overflow: hidden;
+  color: #aab6bd; /* 8,56:1 */
   font-size: 0.78rem;
   font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 2ª linha do cabeçalho: resumo do treino à esquerda, descanso à direita. */
+.headerBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+  margin-top: 6px;
+}
+
+.summary {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.metrics {
+  overflow: hidden;
+  font-size: 0.95rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sep {
+  margin: 0 5px;
+  color: #aab6bd;
+  font-weight: 400;
+}
+
+/* Botão do descanso em duas linhas curtas ("Descanso" / "90 s"): estreito, sem cortar o resumo ao lado. */
+.restChip {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 76px;
+  min-height: 44px;
+  padding: 2px 10px;
+  border: 1px solid rgb(255 255 255 / 28%);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 8%);
+  color: #fff;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* Descanso correndo, mas minimizado: o selo continua mostrando o tempo. */
+.chipLabel {
+  color: #c3ccd2;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.chipValue {
+  font-size: 1rem;
+  line-height: 1.15;
+}
+
+.restChipActive {
+  border-color: #34d399;
+  background: #245f56;
+}
+
+/* Descanso ativo: ocupa a 2ª linha do cabeçalho, com os controles ao alcance do polegar. */
+.restRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin-top: 6px;
+  padding: 0 0 0 10px;
+  border-radius: 10px;
+  background: #245f56;
+}
+
+.restClock {
+  display: flex;
+  flex-direction: column;
+  margin-right: auto;
+  white-space: nowrap;
+}
+
+.restClock .chipLabel {
+  color: #d7f5e7; /* 6,36:1 sobre o verde do descanso */
+}
+
+.restClock strong {
+  color: #fff;
+  font-size: 1.3rem;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.restBtn {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 8px;
+  background: rgb(255 255 255 / 18%);
+  color: #fff;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* Ajuste do tempo de descanso padrão, aberto pelo botão "Descanso 90 s". */
+.restConfig {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgb(255 255 255 / 14%);
+  font-size: 0.9rem;
+}
+
+.restConfig > span {
+  margin-right: auto;
+  color: #c3ccd2;
+}
+
+.restConfig output {
+  min-width: 56px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .notice {
@@ -113,23 +266,6 @@
   font-weight: 800;
 }
 
-.stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-top: 10px;
-  text-align: center;
-}
-
-.stats span {
-  display: block;
-  font-size: 0.8rem;
-  color: #aab6bd;
-}
-
-.stats strong {
-  font-size: 1.05rem;
-}
 
 .message {
   margin: 0 0 12px;
@@ -273,15 +409,45 @@
   box-sizing: border-box;
 }
 
-.typeBtn {
+/* Tipo da série: lista nativa (com os 4 tipos nomeados) sobreposta ao selo. Tocar abre a lista; nada muda
+   sem escolher uma opção. */
+.typePick {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-height: 44px;
-  border: none;
   border-radius: 8px;
   background: #e5e7eb;
   color: #111827;
   font-size: 0.95rem;
   font-weight: 800;
+}
+
+.typePick:focus-within {
+  outline: 3px solid #f59e0b;
+  outline-offset: 2px;
+}
+
+.typeCaret {
+  margin-left: 2px;
+  color: #4d5b66;
+  font-size: 0.75rem;
+}
+
+.typeSelect {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  font-size: 16px; /* evita o zoom automático do iPhone ao abrir */
   cursor: pointer;
+}
+
+.typeName {
+  font-weight: 700;
+  color: #3b4a54;
 }
 
 .type_warmup {
@@ -386,14 +552,6 @@ textarea.textInput {
   margin-top: 0;
 }
 
-.restSetting {
-  display: grid;
-  grid-template-columns: 1fr 90px;
-  gap: 10px;
-  align-items: center;
-  margin-top: 12px;
-  font-size: 0.9rem;
-}
 
 .legend {
   margin: 10px 0 0;
@@ -401,41 +559,6 @@ textarea.textInput {
   color: #61707b;
 }
 
-.rest {
-  position: fixed;
-  left: 8px;
-  right: 8px;
-  /* acima da navegação inferior do celular */
-  bottom: calc(var(--ft-nav-h) + 10px + env(safe-area-inset-bottom));
-  z-index: 40;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: #245f56;
-  color: #fff;
-  box-shadow: 0 6px 20px rgb(0 0 0 / 30%);
-}
-
-.rest strong {
-  margin-left: 6px;
-  font-size: 1.4rem;
-}
-
-.rest button {
-  min-height: 40px;
-  margin-left: 6px;
-  padding: 0 12px;
-  border: none;
-  border-radius: 8px;
-  background: rgb(255 255 255 / 18%);
-  color: #fff;
-  font-weight: 800;
-  cursor: pointer;
-}
 
 .empty {
   max-width: 520px;
@@ -476,12 +599,14 @@ textarea.textInput {
     margin: 0 auto;
     padding-bottom: 24px;
   }
+}
 
-  .rest {
-    right: auto;
-    bottom: 16px;
-    left: 50%;
-    width: min(720px, calc(100% - 32px));
-    transform: translateX(-50%);
-  }
+/* Texto só para leitores de tela. */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }

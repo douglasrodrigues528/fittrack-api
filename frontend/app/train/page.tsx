@@ -26,7 +26,6 @@ import {
 } from '../../lib/load-suggestion';
 import {
   SET_TYPE_LABEL,
-  SET_TYPES,
   addExerciseByName,
   addLiveSet,
   adjustRest,
@@ -85,9 +84,19 @@ function writeDismissed(uids: string[]) {
   }
 }
 
-function nextType(type: SetType): SetType {
-  return SET_TYPES[(SET_TYPES.indexOf(type) + 1) % SET_TYPES.length];
-}
+/** Opções da lista de tipo de série (o valor gravado continua sendo o mesmo de antes). */
+const TYPE_OPTION_LABEL: Record<SetType, string> = {
+  normal: 'Normal',
+  warmup: 'Aquecimento (não conta no volume)',
+  drop: 'Drop set',
+  failure: 'Falha',
+};
+
+/** Ordem da lista: o tipo mais comum primeiro (os valores gravados são os mesmos de SET_TYPES). */
+const TYPE_OPTIONS: SetType[] = ['normal', 'warmup', 'drop', 'failure'];
+
+/** Passo dos botões de ajuste do descanso, em segundos. */
+const REST_STEP = 15;
 
 function selectOnFocus(event: FocusEvent<HTMLInputElement>) {
   event.currentTarget.select();
@@ -121,6 +130,9 @@ export default function TrainPage() {
   const [saving, setSaving] = useState(false);
   const [newExercise, setNewExercise] = useState('');
   const [removedSet, setRemovedSet] = useState<RemovedSet | null>(null);
+  // Só a exibição: o cronômetro continua na sessão (restEndsAt) e segue correndo minimizado.
+  const [restMinimized, setRestMinimized] = useState(false);
+  const [restConfigOpen, setRestConfigOpen] = useState(false);
   const undoRef = useRef<HTMLButtonElement>(null);
 
   // O aviso de desfazer some sozinho; a remoção já está salva desde o toque.
@@ -336,15 +348,30 @@ export default function TrainPage() {
   function renderSet(exerciseUid: string, set: LiveSet, index: number, previousText: string) {
     return (
       <div key={set.uid} className={`${styles.setRow} ${set.done ? styles.setDone : ''}`}>
-        <button
-          type="button"
-          className={`${styles.typeBtn} ${styles[`type_${set.type}`]}`}
-          aria-label={`Série ${index + 1}, tipo ${SET_TYPE_LABEL[set.type]}. Toque para mudar o tipo.`}
-          onClick={() => editLive((c) => updateLiveSet(c, exerciseUid, set.uid, { type: nextType(set.type) }))}
-        >
-          {TYPE_LETTER[set.type] || index + 1}
-        </button>
-        <span className={styles.prev}>{previousText}</span>
+        <span className={`${styles.typePick} ${styles[`type_${set.type}`]}`}>
+          <span aria-hidden="true">
+            {TYPE_LETTER[set.type] || index + 1}
+            <span className={styles.typeCaret}>▾</span>
+          </span>
+          <select
+            className={styles.typeSelect}
+            aria-label={`Tipo da série ${index + 1}`}
+            value={set.type}
+            onChange={(e) =>
+              editLive((c) => updateLiveSet(c, exerciseUid, set.uid, { type: e.target.value as SetType }))
+            }
+          >
+            {TYPE_OPTIONS.map((type) => (
+              <option key={type} value={type}>
+                {TYPE_OPTION_LABEL[type]}
+              </option>
+            ))}
+          </select>
+        </span>
+        <span className={styles.prev}>
+          {previousText}
+          {set.type !== 'normal' && <span className={styles.typeName}> · {SET_TYPE_LABEL[set.type]}</span>}
+        </span>
         <input
           className={styles.field}
           aria-label={`Peso da série ${index + 1} (kg)`}
@@ -408,25 +435,115 @@ export default function TrainPage() {
             {saving ? 'Salvando…' : 'Finalizar'}
           </button>
         </div>
-        <p className={styles.syncLine} role="status" aria-live="polite">
-          {syncLabel(sync, pending)}
-        </p>
-        <div className={styles.stats}>
-          <div>
-            <span>Duração</span>
-            <strong>{formatClock(elapsed)}</strong>
+        {restLeft > 0 && !restMinimized ? (
+          // Descanso ativo: o mesmo cronômetro de sempre (restEndsAt), agora na 2ª linha do cabeçalho.
+          <div className={styles.restRow} role="timer" aria-live="off" aria-label="Descanso">
+            <span className={styles.restClock}>
+              <span className={styles.chipLabel}>Descanso</span>
+              <strong>{formatClock(restLeft)}</strong>
+            </span>
+            <button
+              type="button"
+              className={styles.restBtn}
+              aria-label={`Diminuir ${REST_STEP} segundos`}
+              onClick={() => liveStore.update((c) => (c ? adjustRest(c, -REST_STEP, Date.now()) : c))}
+            >
+              −15s
+            </button>
+            <button
+              type="button"
+              className={styles.restBtn}
+              aria-label={`Aumentar ${REST_STEP} segundos`}
+              onClick={() => liveStore.update((c) => (c ? adjustRest(c, REST_STEP, Date.now()) : c))}
+            >
+              +15s
+            </button>
+            <button type="button" className={styles.restBtn} onClick={() => liveStore.update((c) => (c ? skipRest(c) : c))}>
+              Pular
+            </button>
+            {/* O status de salvamento continua anunciado enquanto a linha mostra o descanso. */}
+            <span className={styles.srOnly} role="status" aria-live="polite">
+              {syncLabel(sync, pending)}
+            </span>
+            <button
+              type="button"
+              className={styles.restBtn}
+              aria-label="Ocultar controles do descanso (o tempo continua contando)"
+              aria-expanded="true"
+              onClick={() => setRestMinimized(true)}
+            >
+              Ocultar
+            </button>
           </div>
-          <div>
-            <span>Volume</span>
-            <strong>{Math.round(stats.volume).toLocaleString('pt-BR')} kg</strong>
+        ) : (
+          <div className={styles.headerBar}>
+            <div className={styles.summary}>
+              <p className={styles.metrics}>
+                <span className={styles.srOnly}>Duração </span>
+                {formatClock(elapsed)}
+                <span className={styles.sep} aria-hidden="true">·</span>
+                <span className={styles.srOnly}>, volume </span>
+                {Math.round(stats.volume).toLocaleString('pt-BR')} kg
+                <span className={styles.sep} aria-hidden="true">·</span>
+                <span className={styles.srOnly}>, </span>
+                {stats.doneSets}/{stats.totalSets} séries
+              </p>
+              <p className={styles.syncLine} role="status" aria-live="polite">
+                {syncLabel(sync, pending)}
+              </p>
+            </div>
+            {restLeft > 0 ? (
+              <button
+                type="button"
+                className={`${styles.restChip} ${styles.restChipActive}`}
+                aria-label={`Descanso: ${formatClock(restLeft)} restantes. Mostrar controles`}
+                aria-expanded="false"
+                onClick={() => setRestMinimized(false)}
+              >
+                <span className={styles.chipLabel}>Descanso</span>
+                <span className={styles.chipValue}>{formatClock(restLeft)}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                className={styles.restChip}
+                aria-expanded={restConfigOpen}
+                aria-controls="rest-config"
+                onClick={() => setRestConfigOpen((open) => !open)}
+              >
+                <span className={styles.chipLabel}>Descanso</span>
+                <span className={styles.chipValue}>{session.restSeconds} s</span>
+              </button>
+            )}
           </div>
-          <div>
-            <span>Séries</span>
-            <strong>
-              {stats.doneSets}/{stats.totalSets}
-            </strong>
+        )}
+        {restConfigOpen && restLeft === 0 && (
+          <div id="rest-config" className={styles.restConfig} role="group" aria-label="Tempo de descanso entre séries">
+            <span>Descanso entre séries</span>
+            <button
+              type="button"
+              className={styles.restBtn}
+              aria-label={`Diminuir ${REST_STEP} segundos`}
+              disabled={session.restSeconds <= 10}
+              onClick={() => editLive((c) => setRestDuration(c, c.restSeconds - REST_STEP))}
+            >
+              −15s
+            </button>
+            <output aria-live="polite">{session.restSeconds} s</output>
+            <button
+              type="button"
+              className={styles.restBtn}
+              aria-label={`Aumentar ${REST_STEP} segundos`}
+              disabled={session.restSeconds >= 600}
+              onClick={() => editLive((c) => setRestDuration(c, c.restSeconds + REST_STEP))}
+            >
+              +15s
+            </button>
+            <button type="button" className={styles.restBtn} onClick={() => setRestConfigOpen(false)}>
+              OK
+            </button>
           </div>
-        </div>
+        )}
       </header>
 
       {sync.kind === 'conflict' && (
@@ -625,50 +742,10 @@ export default function TrainPage() {
           value={session.notes}
           onChange={(e) => editLive((c) => ({ ...c, notes: e.target.value }))}
         />
-        <label className={styles.restSetting}>
-          Descanso após cada série (segundos)
-          <input
-            className={styles.field}
-            type="number"
-            inputMode="numeric"
-            min="10"
-            max="600"
-            step="5"
-            value={session.restSeconds}
-            onChange={(e) => {
-              const value = Number(e.target.value);
-              if (Number.isFinite(value) && value > 0) {
-                editLive((c) => setRestDuration(c, value));
-              }
-            }}
-          />
-        </label>
-        <p className={styles.legend}>
-          Toque no número da série para alternar: A = aquecimento, D = drop set, F = falha. O volume não conta aquecimento.
-        </p>
         <button type="button" className={styles.danger} onClick={handleDiscard}>
           Descartar treino
         </button>
       </section>
-
-      {restLeft > 0 && (
-        <div className={styles.rest} role="timer" aria-live="off">
-          <span>
-            Descanso <strong>{formatClock(restLeft)}</strong>
-          </span>
-          <div>
-            <button type="button" onClick={() => liveStore.update((c) => (c ? adjustRest(c, -15, Date.now()) : c))}>
-              −15s
-            </button>
-            <button type="button" onClick={() => liveStore.update((c) => (c ? adjustRest(c, 15, Date.now()) : c))}>
-              +15s
-            </button>
-            <button type="button" onClick={() => liveStore.update((c) => (c ? skipRest(c) : c))}>
-              Pular
-            </button>
-          </div>
-        </div>
-      )}
 
     </div>
   );
