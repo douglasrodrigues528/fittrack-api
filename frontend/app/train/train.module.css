@@ -253,20 +253,6 @@
   cursor: default;
 }
 
-.emptyHint {
-  margin: 6px 0 0;
-  color: var(--ft-muted);
-  font-size: 0.88rem;
-}
-
-.linkBtn {
-  display: inline-block;
-  margin-top: 14px;
-  color: #245f56;
-  font-weight: 800;
-}
-
-
 .message {
   margin: 0 0 12px;
   padding: 12px 14px;
@@ -559,17 +545,6 @@ textarea.textInput {
   color: #61707b;
 }
 
-
-.empty {
-  max-width: 520px;
-  margin: 0 auto;
-  padding: 32px 16px;
-  border-radius: var(--ft-radius);
-  background: var(--ft-surface);
-  box-shadow: var(--ft-shadow);
-  color: var(--ft-text);
-  text-align: center;
-}
 
 /* Celulares estreitos: a série vira duas linhas (campos + "anterior" abaixo), sem estourar a largura. */
 @media (max-width: 419px) {

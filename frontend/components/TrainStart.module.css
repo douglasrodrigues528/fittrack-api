@@ -1,0 +1,113 @@
+/* Tela Treinar sem treino em andamento. Cartões e botões base vêm de ui.module.css. */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.panel {
+  padding: 16px;
+}
+
+.panelTitle {
+  margin: 0 0 8px;
+  color: var(--ft-ink);
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.note {
+  margin: 0 0 12px;
+  color: var(--ft-muted);
+  line-height: 1.45;
+}
+
+.note:last-child {
+  margin-bottom: 0;
+}
+
+.inlineLink {
+  color: #245f56;
+  font-weight: 800;
+}
+
+.createLink {
+  box-sizing: border-box;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid #e5e7eb;
+}
+
+.rowText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.rowText strong {
+  color: var(--ft-green-text);
+  line-height: 1.25;
+}
+
+.rowText span {
+  color: var(--ft-muted);
+  font-size: 0.88rem;
+}
+
+.startBtn {
+  flex: 0 0 auto;
+  min-width: 96px;
+}
+
+.manageLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border-top: 1px solid #e5e7eb;
+  color: #245f56;
+  font-weight: 800;
+}
+
+.freeBtn {
+  background: #245f56;
+  color: #fff;
+}
+
+.freeBtn:hover:not(:disabled) {
+  background: #1b4b44;
+}
+
+.historyLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  color: #fff;
+  font-weight: 800;
+}
+
+@media (min-width: 480px) {
+  .panel {
+    padding: 20px;
+  }
+}

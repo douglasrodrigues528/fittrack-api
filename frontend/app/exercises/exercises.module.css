@@ -3,30 +3,101 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   min-width: 0;
 }
 
+/* Controles focados e o início da lista param fora da barra fixa, da busca e da navegação. */
+.page button,
+.page a,
+.page input,
+.page select {
+  scroll-margin-top: calc(var(--ft-topbar-h) + 84px);
+  scroll-margin-bottom: calc(var(--ft-nav-h) + 72px);
+}
+
+.page .title {
+  margin: 0;
+}
+
 /* ---------- busca e filtros ---------- */
+/* A busca acompanha a rolagem; com os filtros abertos o painel fica alto e volta a rolar com a página. */
 .searchPanel {
-  padding: 16px;
+  position: sticky;
+  top: calc(var(--ft-topbar-h) + 6px);
+  z-index: 6;
+  padding: 10px;
 }
 
+.searchPanelOpen {
+  position: static;
+}
+
+.searchRow {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+
+.page .searchInput {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+.page .searchBtn {
+  flex: 0 0 auto;
+  padding: 0 12px;
+}
+
+/* Recolhidos por padrão nas telas estreitas; o botão Filtros mostra quantos estão ativos. */
 .filterGrid {
-  display: grid;
+  display: none;
   grid-template-columns: minmax(0, 1fr);
-  gap: 12px;
+  gap: 10px;
+  margin-top: 10px;
 }
 
-.filterActions {
+.searchPanelOpen .filterGrid {
+  display: grid;
+}
+
+.activeFilters {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 16px;
+  align-items: center;
+  gap: 6px 8px;
 }
 
-.filterActions > button {
-  flex: 1 1 150px;
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  max-width: 100%;
+  padding: 0 12px;
+  border: none;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ft-ink);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.clearBtn {
+  min-height: 40px;
+  padding: 0 6px;
+  border: none;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .resultsBar {
@@ -34,8 +105,10 @@
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: 4px 16px;
+  gap: 2px 16px;
   color: #fff;
+  font-size: 0.92rem;
+  scroll-margin-top: calc(var(--ft-topbar-h) + 84px);
 }
 
 .resultsBar p {
@@ -46,20 +119,32 @@
 /* ---------- grade de exercícios ---------- */
 .exerciseGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: 10px;
 }
 
+/* Nas telas estreitas: miniatura ao lado do nome, ações numa linha só. */
 .exerciseCard {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  gap: 10px;
+  padding: 10px;
+}
+
+.cardMain {
+  display: flex;
+  flex: 1;
+  gap: 10px;
+  min-width: 0;
 }
 
 .imageFrame {
   position: relative;
+  flex: 0 0 92px;
+  align-self: flex-start;
   aspect-ratio: 4 / 3;
   overflow: hidden;
+  border-radius: 8px;
   background: #eef2f3;
 }
 
@@ -79,71 +164,87 @@
   align-items: center;
   justify-content: center;
   height: 100%;
-  padding: 12px;
-  color: var(--ft-muted);
-  font-size: 0.9rem;
+  padding: 4px;
+  color: #4b5563;
+  font-size: 0.75rem;
   text-align: center;
 }
 
 .cardContent {
-  display: flex;
   flex: 1;
-  flex-direction: column;
-  gap: 10px;
   min-width: 0;
-  padding: 14px;
 }
 
-.cardTitleRow {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.cardTitleRow h2 {
-  min-width: 0;
+.cardContent h2 {
   margin: 0;
   color: var(--ft-green-text);
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 800;
   line-height: 1.25;
   overflow-wrap: anywhere;
 }
 
-.levelTag {
-  flex-shrink: 0;
-  padding: 3px 9px;
-  border-radius: 999px;
-  background: #dcfce7;
-  color: #14532d;
-  font-size: 0.78rem;
-  font-weight: 800;
-}
-
-.metadata p {
-  margin: 4px 0;
-  color: #4b5563;
-  font-size: 0.9rem;
+.metaPrimary,
+.metaSecondary,
+.inWorkoutTag {
+  margin: 3px 0 0;
+  font-size: 0.85rem;
+  line-height: 1.3;
   overflow-wrap: anywhere;
 }
 
+.metaPrimary {
+  color: #374151;
+  font-weight: 700;
+}
+
+.metaSecondary {
+  color: #4b5563;
+}
+
+.inWorkoutTag {
+  color: #14803a;
+  font-weight: 800;
+}
+
+.cardActions {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
+}
+
+.page .actionBtn {
+  padding: 0 4px;
+  font-size: 0.88rem;
+}
+
 .instructions {
+  padding-top: 10px;
+  border-top: 1px solid #e5e7eb;
   font-size: 0.92rem;
 }
 
-.instructions summary {
-  min-height: 32px;
-  padding: 4px 0;
-  color: #245f56;
-  font-weight: 800;
-  cursor: pointer;
+.detailImages {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.detailImages img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  background: #eef2f3;
+  object-fit: contain;
 }
 
 .instructions ol {
-  margin: 6px 0 0;
+  margin: 0;
   padding-left: 20px;
   line-height: 1.5;
+  list-style: decimal;
 }
 
 .instructions li {
@@ -152,30 +253,8 @@
 }
 
 .secondaryMuscles {
+  margin: 8px 0 0;
   color: #4b5563;
-}
-
-.cardActions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: auto;
-}
-
-.inWorkoutTag {
-  color: #14803a;
-  font-size: 0.88rem;
-  font-weight: 800;
-  text-align: center;
-}
-
-.progressLink {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  color: #245f56;
-  font-weight: 800;
 }
 
 /* ---------- paginação ---------- */
@@ -226,16 +305,8 @@
 
 /* ---------- breakpoints ---------- */
 @media (min-width: 600px) {
-  .filterGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .searchField {
-    grid-column: 1 / -1;
-  }
-
-  .filterActions > button {
-    flex: 0 0 auto;
+  .searchPanelOpen .filterGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .pagination > button {
@@ -245,7 +316,7 @@
 
 @media (min-width: 768px) {
   .searchPanel {
-    padding: 22px;
+    padding: 14px;
   }
 
   .draftBar {
@@ -253,13 +324,67 @@
   }
 }
 
+/* Desktop: filtros sempre à vista, ao lado da busca, e cartões com a imagem em cima. */
 @media (min-width: 1000px) {
-  .filterGrid {
-    grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(0, 1fr));
+  .searchPanel,
+  .searchPanelOpen {
+    position: sticky;
   }
 
-  .searchField {
-    grid-column: auto;
+  .searchForm {
+    display: grid;
+    grid-template-columns: minmax(280px, 2fr) minmax(0, 3fr);
+    gap: 14px;
+    align-items: end;
+  }
+
+  .filterToggle {
+    display: none;
+  }
+
+  .filterGrid,
+  .searchPanelOpen .filterGrid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-top: 0;
+  }
+
+  .exerciseGrid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+  }
+
+  .exerciseCard {
+    padding: 0 0 12px;
+    overflow: hidden;
+  }
+
+  .cardMain {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .imageFrame {
+    flex: 0 0 auto;
+    align-self: stretch;
+    border-radius: 0;
+  }
+
+  .cardContent {
+    padding: 12px 12px 0;
+  }
+
+  .cardActions {
+    padding: 0 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .addBtn {
+    grid-column: 1 / -1;
+  }
+
+  .instructions {
+    margin: 0 12px;
   }
 }
 
@@ -268,9 +393,8 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px 14px;
-  margin-bottom: 16px;
-  padding: 12px 14px;
+  gap: 8px 14px;
+  padding: 10px;
 }
 
 .targetLabel {

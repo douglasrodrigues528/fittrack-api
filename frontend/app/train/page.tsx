@@ -18,6 +18,7 @@ import {
 import { makeUid, TOKEN_KEY } from '../../lib/use-workout-draft';
 import { api } from '../../services/api';
 import LoadSuggestionCard from '../../components/LoadSuggestionCard';
+import TrainStart from '../../components/TrainStart';
 import {
   applySuggestion,
   performanceByExercise,
@@ -322,24 +323,7 @@ export default function TrainPage() {
   }
 
   if (!session) {
-    return (
-      <div className={styles.page}>
-        <section className={styles.empty}>
-          <h1>Treinar</h1>
-          <p>Nenhum treino em andamento. Como você quer treinar hoje?</p>
-          <button type="button" className={styles.primary} onClick={startFree}>
-            ⚡ Começar treino livre
-          </button>
-          <p className={styles.emptyHint}>Escolha os exercícios na hora. Não ocupa vaga de treino planejado.</p>
-          <Link href="/dashboard#my-workouts" className={styles.secondary}>
-            📋 Iniciar um treino planejado
-          </Link>
-          <Link href="/dashboard#workout-form" className={styles.linkBtn}>
-            Criar minha rotina
-          </Link>
-        </section>
-      </div>
-    );
+    return <TrainStart onStartFree={startFree} />;
   }
 
   const elapsed = Math.max(0, Math.floor((now - Date.parse(session.startedAt)) / 1000));

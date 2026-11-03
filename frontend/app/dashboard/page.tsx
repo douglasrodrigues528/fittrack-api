@@ -18,18 +18,16 @@ import TrainingCalendar from '../../components/TrainingCalendar';
 import ui from '../../components/ui.module.css';
 import { api } from '../../services/api';
 import { liveStore, useLiveSession } from '../../lib/use-live-session';
-import { beginLiveSession, discardLiveSession } from '../../lib/session-sync';
+import { beginLiveSession } from '../../lib/session-sync';
+import { startRoutineSession } from '../../lib/start-routine';
 import { draftStore, makeUid, TOKEN_KEY, useWorkoutDraft } from '../../lib/use-workout-draft';
 import {
   SET_TYPE_LABEL,
   referenceSetsFor,
   startEmptySession,
-  startInputFromPerformance,
-  startSession,
   type ExercisePerformance,
   type RoutinePerformance,
   type SetType,
-  type StartInput,
 } from '../../lib/session';
 import {
   DEFAULT_WORKOUT_LIMIT,
@@ -192,6 +190,135 @@ function SetRow({
   );
 }
 
+/** Ações secundárias da rotina (Editar e Excluir), num menu que abre no próprio cartão. */
+function RoutineMenu({ title, onEdit, onDelete }: { title: string; onEdit: () => void; onDelete: () => void }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // Ao abrir, o foco vai para a primeira ação; tocar fora fecha sem executar nada.
+  useEffect(() => {
+    if (!open) return;
+    rootRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus();
+    const onPointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [open]);
+
+  function close() {
+    setOpen(false);
+    triggerRef.current?.focus();
+  }
+
+  function handleMenuKey(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      close();
+      return;
+    }
+    if (event.key === 'Tab') {
+      setOpen(false);
+      return;
+    }
+    const items = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'));
+    const index = items.indexOf(document.activeElement as HTMLButtonElement);
+    const next: Record<string, number> = {
+      ArrowDown: (index + 1) % items.length,
+      ArrowUp: (index - 1 + items.length) % items.length,
+      Home: 0,
+      End: items.length - 1,
+    };
+    if (event.key in next) {
+      event.preventDefault();
+      items[next[event.key]]?.focus();
+    }
+  }
+
+  /** O foco volta ao botão do menu antes da ação: é para ele que a confirmação devolve o foco. */
+  function run(action: () => void) {
+    close();
+    action();
+  }
+
+  return (
+    <div ref={rootRef} className={styles.menuRoot}>
+      <button
+        ref={triggerRef}
+        type="button"
+        className={cx(ui.btn, ui.btnSecondary, styles.menuBtn)}
+        aria-label={`Mais ações da rotina ${title}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        Mais ações <span aria-hidden="true">▾</span>
+      </button>
+      {open && (
+        <div className={styles.menu} role="menu" aria-label={`Ações da rotina ${title}`} onKeyDown={handleMenuKey}>
+          <button type="button" role="menuitem" className={styles.menuItem} onClick={() => run(onEdit)}>
+            Editar
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className={cx(styles.menuItem, styles.menuItemDanger)}
+            onClick={() => run(onDelete)}
+          >
+            Excluir
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Confirmação de exclusão: diálogo nativo (prende o foco, fecha com Esc) que começa em "Cancelar". */
+function DeleteRoutineDialog({
+  title,
+  onCancel,
+  onConfirm,
+}: {
+  title: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    dialogRef.current?.showModal();
+  }, []);
+
+  return (
+    <dialog
+      ref={dialogRef}
+      className={styles.dialog}
+      aria-labelledby="delete-routine-title"
+      aria-describedby="delete-routine-text"
+      onCancel={(event) => {
+        event.preventDefault();
+        onCancel();
+      }}
+    >
+      <h2 id="delete-routine-title" className={ui.sectionTitle}>
+        Excluir “{title}”?
+      </h2>
+      <p id="delete-routine-text" className={styles.dialogText}>
+        A rotina sai da lista e libera uma vaga. O histórico dos treinos já feitos é mantido.
+      </p>
+      <div className={styles.dialogActions}>
+        <button type="button" className={cx(ui.btn, ui.btnSecondary)} onClick={onCancel}>
+          Cancelar
+        </button>
+        <button type="button" className={cx(ui.btn, styles.dialogDanger)} onClick={onConfirm}>
+          Excluir rotina
+        </button>
+      </div>
+    </dialog>
+  );
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const draft = useWorkoutDraft();
@@ -217,6 +344,12 @@ export default function DashboardPage() {
   // Rotinas com a lista de exercícios expandida (recolhidas por padrão).
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const [deleting, setDeleting] = useState<Workout | null>(null);
+  // Cada pedido de "ir ao formulário" (criar, editar) incrementa; o efeito age depois que ele aparece.
+  const [formFocusRequest, setFormFocusRequest] = useState(0);
+  // Para onde o foco volta se a exclusão for cancelada (o botão do menu daquele cartão).
+  const deleteOriginRef = useRef<HTMLElement | null>(null);
 
   const loadWorkouts = useCallback(async () => {
     try {
@@ -287,23 +420,21 @@ export default function DashboardPage() {
     }
   }, [formLinkRequested, loadingWorkouts, journeyPending]);
 
+  useEffect(() => {
+    if (formFocusRequest === 0) return;
+    document.getElementById('workout-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    titleInputRef.current?.focus({ preventScroll: true });
+  }, [formFocusRequest]);
+
   const workoutLimit = journey?.plannedWorkouts.limit ?? DEFAULT_WORKOUT_LIMIT;
   const quota = loadingWorkouts ? null : quotaFor(workouts.length, workoutLimit);
   const atLimit = quota !== null && quota.remaining === 0 && draft.editingId === null;
-  const showWelcome = !loadingWorkouts && shouldShowWelcome(journey, workouts.length > 0, live !== null);
   const formOpen = formMode === 'open' || (formMode === 'auto' && (!isDraftEmpty(draft) || formLinkRequested));
-
-  const totalExercises = workouts.reduce((total, workout) => total + (workout.exercises?.length ?? 0), 0);
-  // Séries de referência (último treino concluído; sem histórico, as planejadas), como nos cartões.
-  const totalSets = workouts.reduce(
-    (total, workout) =>
-      total +
-      (workout.exercises?.reduce(
-        (sum, exercise, index) => sum + referenceSetsFor(exercise, index, performance[workout.id]).sets.length,
-        0,
-      ) ?? 0),
-    0,
-  );
+  const needsOnboarding = !loadingWorkouts && shouldShowWelcome(journey, workouts.length > 0, live !== null);
+  // Quem já está montando uma rotina (rascunho ou link direto) vai ao formulário, sem repetir o convite.
+  const showWelcome = needsOnboarding && !formOpen;
+  // Treino em andamento neste aparelho ou salvo na conta (o outro aparelho também retoma por aqui).
+  const liveTitle = live?.title ?? journey?.activeSession?.title ?? null;
 
   /** Registra a primeira escolha no servidor. Falhar aqui não impede o usuário de seguir. */
   async function completeOnboarding(choice: OnboardingChoice) {
@@ -325,23 +456,15 @@ export default function DashboardPage() {
     });
   }
 
-  function focusWorkoutForm() {
-    // Espera o formulário aparecer (ao sair das boas-vindas) antes de rolar e focar.
-    window.setTimeout(() => {
-      document.getElementById('workout-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      titleInputRef.current?.focus({ preventScroll: true });
-    }, 50);
-  }
-
   async function handleCreateRoutine() {
-    if (showWelcome) {
+    if (needsOnboarding) {
       setChoosing('routine');
       await completeOnboarding('routine');
       setChoosing(null);
       setGuideOpen(true);
     }
     setFormMode('open');
-    focusWorkoutForm();
+    setFormFocusRequest((request) => request + 1);
   }
 
   /** Treino livre: abre (ou retoma) uma sessão sem treino planejado e sem ocupar vaga. */
@@ -351,7 +474,7 @@ export default function DashboardPage() {
       router.push('/train');
       return;
     }
-    if (showWelcome) {
+    if (needsOnboarding) {
       setChoosing('free');
       await completeOnboarding('free');
     }
@@ -371,7 +494,7 @@ export default function DashboardPage() {
     if (!isDraftEmpty(draft)) {
       const question = draft.editingId
         ? 'Cancelar a edição e descartar as alterações não salvas?'
-        : 'Descartar o rascunho do treino?';
+        : 'Descartar o rascunho da rotina?';
       if (!window.confirm(question)) return;
     }
     discardDraft();
@@ -437,8 +560,8 @@ export default function DashboardPage() {
       setBanner({
         kind: 'error',
         lines: [
-          `Você já tem ${workoutLimit} treinos planejados, o máximo permitido. Exclua um treino que não usa mais ` +
-            'ou edite um existente. Seu rascunho continua guardado.',
+          `Você já tem ${workoutLimit} rotinas, o máximo permitido. Exclua uma que não usa mais ` +
+            'ou edite uma existente. Seu rascunho continua guardado.',
         ],
       });
       return;
@@ -460,7 +583,7 @@ export default function DashboardPage() {
       setFormMode('closed');
       setBanner({
         kind: 'success',
-        lines: [wasEditing ? 'Treino atualizado com sucesso!' : 'Treino cadastrado com sucesso!'],
+        lines: [wasEditing ? 'Rotina atualizada com sucesso!' : 'Rotina criada com sucesso!'],
       });
       await loadWorkouts();
     } catch (error) {
@@ -474,7 +597,7 @@ export default function DashboardPage() {
       setBanner({
         kind: 'error',
         lines: [
-          `${apiErrorMessage(error, 'Erro ao salvar o treino.')} Seu rascunho foi mantido; tente novamente.`,
+          `${apiErrorMessage(error, 'Erro ao salvar a rotina.')} Seu rascunho foi mantido; tente novamente.`,
         ],
       });
     } finally {
@@ -485,7 +608,7 @@ export default function DashboardPage() {
   function handleEditWorkout(workout: Workout) {
     const current = draftStore.getSnapshot();
     if (!isDraftEmpty(current) && current.editingId !== workout.id) {
-      if (!window.confirm('Há um rascunho em andamento. Substituí-lo pela edição deste treino?')) return;
+      if (!window.confirm('Há um rascunho em andamento. Substituí-lo pela edição desta rotina?')) return;
     }
     if (current.editingId !== workout.id || isDraftEmpty(current)) {
       draftStore.update(() => draftFromWorkout(workout, makeUid));
@@ -494,61 +617,39 @@ export default function DashboardPage() {
     }
     setBanner(null);
     setFormMode('open');
-    focusWorkoutForm();
+    setFormFocusRequest((request) => request + 1);
   }
 
-  async function handleDeleteWorkout(id: string) {
-    if (
-      !window.confirm(
-        'Deseja realmente excluir este treino planejado? Isso libera uma vaga; o histórico dos treinos já feitos é mantido.',
-      )
-    ) {
-      return;
-    }
+  function askDeleteWorkout(workout: Workout) {
+    deleteOriginRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setDeleting(workout);
+  }
 
+  function cancelDelete() {
+    setDeleting(null);
+    window.setTimeout(() => deleteOriginRef.current?.focus(), 0);
+  }
+
+  async function confirmDelete() {
+    if (!deleting) return;
+    const { id } = deleting;
+    setDeleting(null);
     try {
       await api.delete(`/workouts/${id}`);
       if (draftStore.getSnapshot().editingId === id) discardDraft();
       await loadWorkouts();
-      setBanner({ kind: 'success', lines: ['Treino excluído. Uma vaga foi liberada.'] });
+      setBanner({ kind: 'success', lines: ['Rotina excluída. Uma vaga foi liberada.'] });
+      // O cartão (e o botão que abriu a confirmação) saiu da tela: o foco vai para o título da lista.
+      headingRef.current?.focus({ preventScroll: true });
     } catch (error) {
       console.error(error);
-      setBanner({ kind: 'error', lines: [apiErrorMessage(error, 'Erro ao excluir treino.')] });
+      setBanner({ kind: 'error', lines: [apiErrorMessage(error, 'Erro ao excluir a rotina.')] });
+      deleteOriginRef.current?.focus();
     }
   }
 
-  /** Inicia um treino a partir da rotina; busca as últimas cargas para servir de referência. */
   async function handleStartWorkout(workout: Workout) {
-    const current = liveStore.getSnapshot();
-    if (current) {
-      if (!window.confirm(`Já existe um treino em andamento ("${current.title}"). Descartá-lo e iniciar este?`)) {
-        return;
-      }
-      await discardLiveSession();
-    }
-    // Referência calculada no servidor: séries e cargas do último treino concluído DESTA rotina,
-    // por exercício (ou as planejadas, para exercícios ainda sem histórico).
-    let input: StartInput;
-    try {
-      const response = await api.get<{ title: string; exercises: ExercisePerformance[] }>(
-        `/sessions/last-performance/${workout.id}`,
-      );
-      input = startInputFromPerformance(workout.id, response.data.title, response.data.exercises);
-    } catch (error) {
-      console.warn('Não foi possível buscar as cargas do último treino.', error);
-      if (
-        !window.confirm(
-          'Não foi possível carregar as cargas do seu último treino (sem conexão?). ' +
-            'Iniciar com os valores planejados na rotina?',
-        )
-      ) {
-        return;
-      }
-      input = { workoutId: workout.id, title: workout.title, exercises: workout.exercises ?? [] };
-    }
-    // Inicia uma SESSÃO a partir do modelo: o treino planejado não é copiado nem alterado.
-    beginLiveSession(startSession(input, makeUid, new Date().toISOString()));
-    router.push('/train');
+    if (await startRoutineSession(workout)) router.push('/train');
   }
 
   if (loadingWorkouts || journeyPending) {
@@ -569,9 +670,6 @@ export default function DashboardPage() {
           <p className={ui.pageSubtitle}>Monte sua rotina semanal ou comece a treinar agora. Você escolhe.</p>
         </header>
         <StartChoices
-          variant="welcome"
-          quota={quota}
-          liveTitle={null}
           busy={choosing}
           onCreateRoutine={() => void handleCreateRoutine()}
           onStartFree={() => void handleStartFree()}
@@ -585,14 +683,33 @@ export default function DashboardPage() {
 
   return (
     <div className={styles.page}>
-      <header>
-        <h1 className={ui.pageTitle}>Seus treinos</h1>
-        <p className={ui.pageSubtitle}>Gerencie seus treinos, exercícios, séries, cargas e repetições.</p>
+      <header className={styles.listHeader}>
+        <div className={styles.listHeading}>
+          <h1 id="my-workouts" ref={headingRef} tabIndex={-1} className={styles.listTitle}>
+            Minhas rotinas
+          </h1>
+          {quota && (
+            <p className={styles.quotaLine}>
+              {quota.used} de {quota.limit} rotinas
+              {quota.remaining === 0 && ' · para criar outra, exclua ou edite uma. Treino livre não ocupa vaga.'}
+            </p>
+          )}
+        </div>
+        {!formOpen && (
+          <button
+            type="button"
+            className={cx(ui.btn, styles.newRoutineBtn)}
+            onClick={() => void handleCreateRoutine()}
+            disabled={atLimit && isDraftEmpty(draft)}
+          >
+            {!isDraftEmpty(draft) && !draft.editingId ? 'Continuar rascunho' : '+ Nova rotina'}
+          </button>
+        )}
       </header>
 
-      {live && (
+      {liveTitle && (
         <Link href="/train" className={styles.liveBanner}>
-          ▶ Treino em andamento: <strong>{live.title}</strong> — continuar
+          ▶ Treino em andamento: <strong>{liveTitle}</strong> — continuar
         </Link>
       )}
 
@@ -610,43 +727,20 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <section aria-labelledby="my-workouts" className={styles.routines}>
-        <div className={styles.listHeader}>
-          <h2 id="my-workouts" className={styles.listTitle}>
-            Meus treinos{quota ? ` — ${quota.used} de ${quota.limit}` : ''}
-          </h2>
-          {workouts.length > 0 && (
-            <button
-              type="button"
-              className={cx(ui.btn, styles.newRoutineBtn)}
-              onClick={() => void handleCreateRoutine()}
-              disabled={atLimit && isDraftEmpty(draft)}
-              title={atLimit ? 'Limite atingido: exclua ou edite um treino para liberar espaço.' : undefined}
-            >
-              {!isDraftEmpty(draft) && !draft.editingId ? 'Continuar rascunho' : '+ Novo treino'}
-            </button>
-          )}
-        </div>
-
+      <section aria-labelledby="my-workouts">
         {loadingWorkouts ? (
           <p className={ui.loadingText} role="status">
             Carregando treinos…
           </p>
         ) : workouts.length === 0 ? (
-          <div className={cx(ui.card, styles.emptyRoutines)}>
-            <p className={styles.emptyTitle}>Você ainda não tem treinos planejados.</p>
-            <p className={styles.emptyText}>
-              Monte o primeiro com os exercícios que costuma fazer — ele fica salvo para iniciar com um toque.
-            </p>
-            <div className={styles.emptyActions}>
-              <button type="button" className={cx(ui.btn, ui.btnPrimary)} onClick={() => void handleCreateRoutine()}>
-                {isDraftEmpty(draft) ? 'Criar primeiro treino' : 'Continuar rascunho'}
-              </button>
-              <button type="button" className={cx(ui.btn, ui.btnSecondary)} onClick={() => void handleStartFree()}>
-                Começar treino livre
-              </button>
+          !formOpen && (
+            <div className={cx(ui.card, styles.emptyRoutines)}>
+              <p className={styles.emptyTitle}>Você ainda não tem rotinas.</p>
+              <p className={styles.emptyText}>
+                Monte a primeira com os exercícios que costuma fazer: ela fica salva para iniciar com um toque.
+              </p>
             </div>
-          </div>
+          )
         ) : (
           <div className={styles.cards}>
             {workouts.map((workout) => {
@@ -687,7 +781,7 @@ export default function DashboardPage() {
                   <div className={styles.cardTools}>
                     <button
                       type="button"
-                      className={cx(ui.btn, ui.btnSecondary)}
+                      className={cx(ui.btn, ui.btnSecondary, styles.toolBtn)}
                       aria-expanded={isOpen}
                       aria-controls={detailsId}
                       onClick={() => toggleExpanded(workout.id)}
@@ -696,17 +790,11 @@ export default function DashboardPage() {
                       {isOpen ? 'Ocultar exercícios' : 'Ver exercícios'}
                     </button>
 
-                    <button type="button" className={cx(ui.btn, ui.btnWarning)} onClick={() => handleEditWorkout(workout)}>
-                      Editar
-                    </button>
-
-                    <button
-                      type="button"
-                      className={cx(ui.btn, ui.btnDanger)}
-                      onClick={() => handleDeleteWorkout(workout.id)}
-                    >
-                      Excluir
-                    </button>
+                    <RoutineMenu
+                      title={workout.title}
+                      onEdit={() => handleEditWorkout(workout)}
+                      onDelete={() => askDeleteWorkout(workout)}
+                    />
                   </div>
 
                   {isOpen && (
@@ -779,29 +867,22 @@ export default function DashboardPage() {
             </button>
           </div>
           <h2 id="form-title" className={ui.sectionTitle}>
-            {draft.editingId ? 'Editar treino' : 'Novo treino planejado'}
-            {!draft.editingId && quota && (
-              <span className={styles.slotTag}>
-                {quota.remaining > 0
-                  ? `${quota.remaining} ${quota.remaining === 1 ? 'vaga livre' : 'vagas livres'}`
-                  : 'sem vagas'}
-              </span>
-            )}
+            {draft.editingId ? 'Editar rotina' : 'Nova rotina'}
           </h2>
 
           {atLimit && (
             <div className={ui.bannerInfo} role="status">
-              Você já tem {workoutLimit} de {workoutLimit} treinos planejados. Para criar outro, exclua um treino que
-              não usa mais ou edite um existente na lista abaixo. Treinos livres e o histórico não contam neste limite.
+              Você atingiu o limite de rotinas. Para criar outra, exclua uma que não usa mais ou edite uma existente na
+              lista acima. Treinos livres e o histórico não contam neste limite.
             </div>
           )}
 
           {!draft.editingId && (guideOpen || (quota !== null && quota.used === 0)) && (
-            <ol className={styles.guide} aria-label="Como montar seu treino">
+            <ol className={styles.guide} aria-label="Como montar sua rotina">
               <li>Dê um nome, por exemplo “Treino A — Peito e costas”.</li>
               <li>Adicione exercícios do catálogo ou digite o nome de um exercício.</li>
               <li>Informe peso e repetições de cada série.</li>
-              <li>Salve. Pode começar com um treino só; os dias da semana são opcionais.</li>
+              <li>Salve. Pode começar com uma rotina só; os dias da semana são opcionais.</li>
             </ol>
           )}
 
@@ -820,7 +901,7 @@ export default function DashboardPage() {
 
           <form onSubmit={handleSaveWorkout} className={styles.form}>
             <label className={ui.fieldLabel}>
-              Título do treino
+              Nome da rotina
               <input
                 ref={titleInputRef}
                 className={ui.control}
@@ -893,7 +974,7 @@ export default function DashboardPage() {
             </div>
 
             <div className={styles.exerciseBox} id="exercise-list">
-              <h3 className={styles.boxTitle}>Exercícios do treino ({draft.exercises.length})</h3>
+              <h3 className={styles.boxTitle}>Exercícios da rotina ({draft.exercises.length})</h3>
 
               {draft.exercises.length === 0 && (
                 <p className={styles.hint}>Nenhum exercício ainda. Escolha um no catálogo ou adicione manualmente.</p>
@@ -929,7 +1010,7 @@ export default function DashboardPage() {
                         <button
                           type="button"
                           className={cx(ui.btn, ui.btnDanger, styles.compactBtn)}
-                          aria-label={`Remover ${exercise.name} do treino`}
+                          aria-label={`Remover ${exercise.name} da rotina`}
                           onClick={() => draftStore.update((current) => removeExercise(current, exercise.uid))}
                         >
                           Remover
@@ -1007,10 +1088,10 @@ export default function DashboardPage() {
                 {saving
                   ? 'Salvando...'
                   : draft.editingId
-                    ? 'Atualizar treino'
+                    ? 'Atualizar rotina'
                     : atLimit
-                      ? 'Limite de treinos atingido'
-                      : 'Salvar treino'}
+                      ? 'Limite de rotinas atingido'
+                      : 'Salvar rotina'}
               </button>
 
               {!isDraftEmpty(draft) && (
@@ -1023,36 +1104,28 @@ export default function DashboardPage() {
         </section>
       )}
 
+      {!liveTitle && (
+        <section className={cx(ui.card, styles.freeRow)} aria-label="Treino livre">
+          <p className={styles.freeText}>
+            <strong>Treino livre</strong>
+            <span>Treine agora escolhendo os exercícios na hora. Não ocupa vaga de rotina.</span>
+          </p>
+          <button type="button" className={cx(ui.btn, ui.btnSecondary)} onClick={() => void handleStartFree()}>
+            Começar treino livre
+          </button>
+        </section>
+      )}
+
       {/* Dias realmente treinados nesta semana (sessões concluídas). */}
       <TrainingCalendar mode="week" />
 
-      <section aria-label="Começar">
-        <StartChoices
-          variant="compact"
-          quota={quota}
-          liveTitle={live?.title ?? journey?.activeSession?.title ?? null}
-          hasDraft={!isDraftEmpty(draft)}
-          onCreateRoutine={() => void handleCreateRoutine()}
-          onStartFree={() => void handleStartFree()}
+      {deleting && (
+        <DeleteRoutineDialog
+          title={deleting.title}
+          onCancel={cancelDelete}
+          onConfirm={() => void confirmDelete()}
         />
-      </section>
-
-      <section className={styles.stats} aria-label="Resumo dos treinos">
-        <div className={cx(ui.card, styles.statCard)}>
-          <strong>{workouts.length}</strong>
-          <span>Treinos (de {workoutLimit})</span>
-        </div>
-
-        <div className={cx(ui.card, styles.statCard)}>
-          <strong>{totalExercises}</strong>
-          <span>Exercícios</span>
-        </div>
-
-        <div className={cx(ui.card, styles.statCard)}>
-          <strong>{totalSets}</strong>
-          <span>Séries</span>
-        </div>
-      </section>
+      )}
     </div>
   );
 }
