@@ -237,6 +237,17 @@
 }
 
 /* ---------- ações do formulário ---------- */
+/* Erro ao salvar, logo acima do botão: ao rolar até ele, não fica sob as barras fixas. */
+.saveError {
+  scroll-margin-top: calc(var(--ft-topbar-h) + 12px);
+  scroll-margin-bottom: calc(var(--ft-nav-h) + 12px);
+}
+
+.saveError:focus {
+  outline: 3px solid #991b1b;
+  outline-offset: 2px;
+}
+
 .formActions {
   display: flex;
   flex-wrap: wrap;

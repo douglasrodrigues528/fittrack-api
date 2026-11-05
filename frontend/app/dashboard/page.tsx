@@ -68,6 +68,8 @@ interface Workout {
 const WEEKDAY_NAMES = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 
 type Banner = { kind: 'success' | 'error'; lines: string[] } | null;
+/** Erro ao salvar o formulário. `limit`: o servidor recusou por falta de vaga (409). */
+type SaveError = { lines: string[]; limit: boolean } | null;
 
 /** Referência de cada rotina (últimas séries feitas), indexada pelo ID da rotina. */
 type PerformanceMap = Record<string, ExercisePerformance[]>;
@@ -327,6 +329,9 @@ export default function DashboardPage() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loadingWorkouts, setLoadingWorkouts] = useState(true);
   const [banner, setBanner] = useState<Banner>(null);
+  // Mostrado junto do botão Salvar: quem tocou nele vê a explicação ali, sem procurar no topo.
+  const [saveError, setSaveError] = useState<SaveError>(null);
+  const saveErrorRef = useRef<HTMLDivElement>(null);
   const [saving, setSaving] = useState(false);
   const [manualName, setManualName] = useState('');
   const [manualError, setManualError] = useState('');
@@ -426,9 +431,32 @@ export default function DashboardPage() {
     titleInputRef.current?.focus({ preventScroll: true });
   }, [formFocusRequest]);
 
+  // Cada erro novo leva a mensagem para a tela (só rola se ela estiver fora) e recebe o foco.
+  useEffect(() => {
+    const message = saveErrorRef.current;
+    if (!saveError || !message) return;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    message.focus({ preventScroll: true });
+    message.scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' });
+    if (reduceMotion) return;
+    // A rolagem suave pode ser interrompida (a lista acima é recarregada junto): confere e completa sem animação.
+    const timer = window.setTimeout(() => {
+      const box = message.getBoundingClientRect();
+      const margin = getComputedStyle(message);
+      const top = parseFloat(margin.scrollMarginTop) || 0;
+      const bottom = parseFloat(margin.scrollMarginBottom) || 0;
+      if (box.top < top - 1 || box.bottom > window.innerHeight - bottom + 1) {
+        message.scrollIntoView({ block: 'nearest' });
+      }
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [saveError]);
+
   const workoutLimit = journey?.plannedWorkouts.limit ?? DEFAULT_WORKOUT_LIMIT;
   const quota = loadingWorkouts ? null : quotaFor(workouts.length, workoutLimit);
   const atLimit = quota !== null && quota.remaining === 0 && draft.editingId === null;
+  // O aviso de falta de vaga some quando uma vaga é liberada (o mesmo rascunho pode ser salvo).
+  const visibleSaveError = saveError && (!saveError.limit || atLimit) ? saveError : null;
   const formOpen = formMode === 'open' || (formMode === 'auto' && (!isDraftEmpty(draft) || formLinkRequested));
   const needsOnboarding = !loadingWorkouts && shouldShowWelcome(journey, workouts.length > 0, live !== null);
   // Quem já está montando uma rotina (rascunho ou link direto) vai ao formulário, sem repetir o convite.
@@ -499,6 +527,7 @@ export default function DashboardPage() {
     }
     discardDraft();
     setBanner(null);
+    setSaveError(null);
     setFormMode('closed');
   }
 
@@ -553,12 +582,12 @@ export default function DashboardPage() {
     const current = draftStore.getSnapshot();
     const errors = validateForSave(current);
     if (errors.length > 0) {
-      setBanner({ kind: 'error', lines: errors });
+      setSaveError({ lines: errors, limit: false });
       return;
     }
     if (current.editingId === null && atLimit) {
-      setBanner({
-        kind: 'error',
+      setSaveError({
+        limit: true,
         lines: [
           `Você já tem ${workoutLimit} rotinas, o máximo permitido. Exclua uma que não usa mais ` +
             'ou edite uma existente. Seu rascunho continua guardado.',
@@ -569,6 +598,7 @@ export default function DashboardPage() {
 
     setSaving(true);
     setBanner(null);
+    setSaveError(null);
     try {
       const payload = toPayload(current);
       if (current.editingId) {
@@ -591,11 +621,17 @@ export default function DashboardPage() {
       if (isLimitError(error)) {
         // O servidor é quem garante o limite: atualiza a lista para mostrar as vagas reais.
         await loadWorkouts();
-        setBanner({ kind: 'error', lines: [`${apiErrorMessage(error, '')} Seu rascunho continua guardado.`] });
+        setSaveError({
+          limit: true,
+          lines: [
+            `${apiErrorMessage(error, `Você já tem ${workoutLimit} rotinas, o máximo permitido.`)} ` +
+              'Seu rascunho continua guardado.',
+          ],
+        });
         return;
       }
-      setBanner({
-        kind: 'error',
+      setSaveError({
+        limit: false,
         lines: [
           `${apiErrorMessage(error, 'Erro ao salvar a rotina.')} Seu rascunho foi mantido; tente novamente.`,
         ],
@@ -616,6 +652,7 @@ export default function DashboardPage() {
       setSetErrors({});
     }
     setBanner(null);
+    setSaveError(null);
     setFormMode('open');
     setFormFocusRequest((request) => request + 1);
   }
@@ -860,7 +897,10 @@ export default function DashboardPage() {
             <button
               type="button"
               className={cx(ui.btn, ui.btnSecondary, styles.closeFormBtn)}
-              onClick={() => setFormMode('closed')}
+              onClick={() => {
+                setSaveError(null);
+                setFormMode('closed');
+              }}
               aria-label="Fechar formulário (o rascunho continua guardado)"
             >
               Fechar
@@ -870,7 +910,7 @@ export default function DashboardPage() {
             {draft.editingId ? 'Editar rotina' : 'Nova rotina'}
           </h2>
 
-          {atLimit && (
+          {atLimit && !visibleSaveError && (
             <div className={ui.bannerInfo} role="status">
               Você atingiu o limite de rotinas. Para criar outra, exclua uma que não usa mais ou edite uma existente na
               lista acima. Treinos livres e o histórico não contam neste limite.
@@ -1082,6 +1122,16 @@ export default function DashboardPage() {
                 );
               })}
             </div>
+
+            {visibleSaveError && (
+              <div ref={saveErrorRef} tabIndex={-1} className={cx(ui.bannerError, styles.saveError)} role="alert">
+                {visibleSaveError.lines.map((line) => (
+                  <p key={line} className={styles.bannerLine}>
+                    {line}
+                  </p>
+                ))}
+              </div>
+            )}
 
             <div className={styles.formActions}>
               <button type="submit" className={cx(ui.btn, ui.btnPrimary)} disabled={saving || atLimit}>

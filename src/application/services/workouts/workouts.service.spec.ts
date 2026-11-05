@@ -88,7 +88,18 @@ describe('WorkoutsService', () => {
     const attempt = service.create({ title: 'Oitavo' }, 'user-1');
     await expect(attempt).rejects.toBeInstanceOf(ConflictException);
     await attempt.catch((error: ConflictException) => {
-      expect(error.getResponse()).toMatchObject({ code: WORKOUT_LIMIT_REACHED });
+      expect(error.getStatus()).toBe(409);
+      const body = error.getResponse() as {
+        statusCode: number;
+        code: string;
+        message: string;
+      };
+      expect(body).toMatchObject({
+        statusCode: 409,
+        code: WORKOUT_LIMIT_REACHED,
+      });
+      expect(body.message).toContain(`${MAX_PLANNED_WORKOUTS} rotinas`);
+      expect(body.message).not.toMatch(/treinos? planejados?/i);
     });
     expect(repository.save).not.toHaveBeenCalled();
     expect(cache.del).not.toHaveBeenCalled();
