@@ -29,7 +29,20 @@ const LABELS: Record<string, string> = {
   outros: 'Outros',
   'peso-do-corpo': 'Peso do corpo',
   'rolo-de-espuma': 'Rolo de espuma',
+  iniciante: 'Iniciante',
+  intermediario: 'Intermediário',
+  avancado: 'Avançado',
+  forca: 'Força',
+  alongamento: 'Alongamento',
+  pliometria: 'Pliometria',
+  powerlifting: 'Powerlifting',
+  'levantamento-olimpico': 'Levantamento olímpico',
+  strongman: 'Strongman',
+  cardio: 'Cardio',
 };
+
+/** Níveis gravados no catálogo; a API filtra pelo valor exato. */
+export const LEVEL_OPTIONS = ['iniciante', 'intermediario', 'avancado'];
 
 export function catalogLabel(value: string): string {
   const known = LABELS[value];

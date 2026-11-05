@@ -6,6 +6,9 @@ describe('catalogLabel', () => {
   it('traduz slugs conhecidos com acentos', () => {
     assert.equal(catalogLabel('peso-do-corpo'), 'Peso do corpo');
     assert.equal(catalogLabel('quadriceps'), 'Quadríceps');
+    assert.equal(catalogLabel('intermediario'), 'Intermediário');
+    assert.equal(catalogLabel('forca'), 'Força');
+    assert.equal(catalogLabel('levantamento-olimpico'), 'Levantamento olímpico');
   });
 
   it('valores novos ainda ficam legíveis', () => {

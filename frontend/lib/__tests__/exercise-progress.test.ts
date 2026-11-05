@@ -14,6 +14,7 @@ import {
   repsLayout,
   repsTicks,
   withSetCounts,
+  progressBackLink,
   progressPath,
   repsLabel,
   shortDateLabel,
@@ -70,6 +71,25 @@ describe('formatação', () => {
   it('link da evolução codifica o ID do catálogo', () => {
     assert.equal(progressPath('Barbell_Bench_Press_-_Medium_Grip'), '/exercises/progress?id=Barbell_Bench_Press_-_Medium_Grip');
     assert.equal(progressPath('3/4 Sit-Up'), '/exercises/progress?id=3%2F4%20Sit-Up');
+    assert.equal(progressPath('Plank', '/exercises?q=a&page=2'), '/exercises/progress?id=Plank&voltar=%2Fexercises%3Fq%3Da%26page%3D2');
+  });
+});
+
+describe('progressBackLink', () => {
+  it('volta para a tela de origem, com a busca do catálogo', () => {
+    assert.deepEqual(progressBackLink('/history'), { href: '/history', label: '← Histórico' });
+    assert.deepEqual(progressBackLink('/exercises?q=supino&page=2'), {
+      href: '/exercises?q=supino&page=2',
+      label: '← Catálogo',
+    });
+  });
+
+  it('sem origem, ou com endereço fora do app, volta ao catálogo', () => {
+    const catalog = { href: '/exercises', label: '← Catálogo' };
+    assert.deepEqual(progressBackLink(null), catalog);
+    assert.deepEqual(progressBackLink('https://exemplo.test/exercises'), catalog);
+    assert.deepEqual(progressBackLink('//exemplo.test'), catalog);
+    assert.deepEqual(progressBackLink('/exercises.evil'), catalog);
   });
 });
 

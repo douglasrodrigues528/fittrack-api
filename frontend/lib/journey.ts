@@ -23,13 +23,6 @@ export function quotaFor(used: number, limit = DEFAULT_WORKOUT_LIMIT): WorkoutQu
   return { used, limit, remaining: Math.max(0, limit - used) };
 }
 
-/** "Você pode criar mais 3 treinos" / "Última vaga" / "Limite atingido". */
-export function describeQuota(quota: WorkoutQuota): string {
-  if (quota.remaining === 0) return `Limite de ${quota.limit} treinos atingido`;
-  if (quota.remaining === 1) return 'Resta 1 vaga';
-  return `Restam ${quota.remaining} vagas`;
-}
-
 /** Deve mostrar a tela de boas-vindas? Só para quem ainda não começou a usar o app. */
 export function shouldShowWelcome(
   journey: JourneyState | null,

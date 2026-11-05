@@ -48,8 +48,17 @@ export interface ExerciseProgress {
   sessions: ProgressSession[];
 }
 
-export function progressPath(exerciseId: string): string {
-  return `/exercises/progress?id=${encodeURIComponent(exerciseId)}`;
+/** `from`: tela de origem, para a evolução voltar ao mesmo ponto (com a busca e os filtros do catálogo). */
+export function progressPath(exerciseId: string, from?: string): string {
+  const path = `/exercises/progress?id=${encodeURIComponent(exerciseId)}`;
+  return from ? `${path}&voltar=${encodeURIComponent(from)}` : path;
+}
+
+/** Destino do "voltar" da evolução. Só aceita telas do próprio app; o resto volta ao catálogo. */
+export function progressBackLink(from: string | null): { href: string; label: string } {
+  if (from === '/history') return { href: from, label: '← Histórico' };
+  if (from === '/exercises' || from?.startsWith('/exercises?')) return { href: from, label: '← Catálogo' };
+  return { href: '/exercises', label: '← Catálogo' };
 }
 
 /** "72,5 kg". */

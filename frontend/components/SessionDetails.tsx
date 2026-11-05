@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { api } from '../services/api';
 import { formatKg, progressPath } from '../lib/exercise-progress';
 import { SET_TYPE_LABEL, type SetType } from '../lib/session';
@@ -18,13 +19,15 @@ export interface SessionDetailExercise {
  * Exercícios do catálogo levam à evolução deles.
  */
 export function SessionExercises({ exercises, notes }: { exercises: SessionDetailExercise[]; notes: string | null }) {
+  // Aberta a partir do histórico, a evolução volta para o histórico.
+  const from = usePathname() === '/history' ? '/history' : undefined;
   return (
     <>
       {exercises.map((exercise, index) => (
         <div key={`${exercise.name}-${index}`} className={styles.exercise}>
           <h3>
             {exercise.exerciseId ? (
-              <Link href={progressPath(exercise.exerciseId)} title="Ver evolução deste exercício">
+              <Link href={progressPath(exercise.exerciseId, from)} title="Ver evolução deste exercício">
                 {exercise.name}
               </Link>
             ) : (

@@ -106,8 +106,8 @@ export class WorkoutsService {
           statusCode: 409,
           code: WORKOUT_LIMIT_REACHED,
           message:
-            `Você já tem ${MAX_PLANNED_WORKOUTS} treinos planejados, o máximo permitido. ` +
-            'Edite um treino existente ou exclua um que não usa mais para liberar uma vaga. ' +
+            `Você já tem ${MAX_PLANNED_WORKOUTS} rotinas, o máximo permitido. ` +
+            'Edite uma rotina existente ou exclua uma que não usa mais para liberar uma vaga. ' +
             'Treinos livres e o histórico não contam neste limite.',
           quota: toQuota(used),
         });

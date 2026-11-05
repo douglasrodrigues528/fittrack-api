@@ -185,9 +185,11 @@ describeE2E('Jornada inicial, limite de treinos e sessões (e2e)', () => {
         code: 'WORKOUT_LIMIT_REACHED',
         quota: { used: 7, remaining: 0 },
       });
-      expect((eighth.body as { message: string }).message).toMatch(
-        /exclua um/i,
-      );
+      const message = (eighth.body as { message: string }).message;
+      expect(message).toMatch(/exclua um/i);
+      // Mesma palavra da interface: "rotinas".
+      expect(message).toMatch(/7 rotinas/);
+      expect(message).not.toMatch(/treinos? planejados?/i);
 
       const quota = await api()
         .get('/workouts/quota')

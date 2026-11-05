@@ -10,7 +10,13 @@ import historyStyles from '../../history/history.module.css';
 import LoadChart from '../../../components/LoadChart';
 import SessionDetails from '../../../components/SessionDetails';
 import { api } from '../../../services/api';
-import { formatKg, fullDateLabel, repsLabel, type ExerciseProgress } from '../../../lib/exercise-progress';
+import {
+  formatKg,
+  fullDateLabel,
+  progressBackLink,
+  repsLabel,
+  type ExerciseProgress,
+} from '../../../lib/exercise-progress';
 import { SET_TYPE_LABEL } from '../../../lib/session';
 import { TOKEN_KEY } from '../../../lib/use-workout-draft';
 import styles from './progress.module.css';
@@ -40,7 +46,8 @@ type State =
 
 function ExerciseProgressView() {
   const router = useRouter();
-  const exerciseId = useSearchParams().get('id') ?? '';
+  const searchParams = useSearchParams();
+  const exerciseId = searchParams.get('id') ?? '';
   const [state, setState] = useState<State>({ status: 'loading', id: exerciseId });
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -75,9 +82,10 @@ function ExerciseProgressView() {
     };
   }, [exerciseId, router]);
 
+  const backLink = progressBackLink(searchParams.get('voltar'));
   const back = (
-    <Link href="/exercises" className={styles.back}>
-      ← Catálogo
+    <Link href={backLink.href} className={styles.back}>
+      {backLink.label}
     </Link>
   );
 

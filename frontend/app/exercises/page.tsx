@@ -1,12 +1,12 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useState, type FormEvent } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { cx } from '../../components/cx';
 import ui from '../../components/ui.module.css';
 import { api } from '../../services/api';
-import { catalogLabel, sortByLabel } from '../../lib/catalog-labels';
+import { LEVEL_OPTIONS, catalogLabel, sortByLabel } from '../../lib/catalog-labels';
 import { progressPath } from '../../lib/exercise-progress';
 import { addCatalogExerciseToSession, countInSession, startEmptySession } from '../../lib/session';
 import { beginLiveSession } from '../../lib/session-sync';
@@ -58,7 +58,51 @@ const EMPTY_FILTERS: ExerciseFilters = {
   category: '',
 };
 
+const FILTER_KEYS = Object.keys(EMPTY_FILTERS) as (keyof ExerciseFilters)[];
+
 const PAGE_SIZE = 24;
+
+/** Busca e filtros guardados na URL: voltar da evolução de um exercício reencontra a mesma lista. */
+function filtersFromUrl(params: { get(name: string): string | null }): ExerciseFilters {
+  const filters = { ...EMPTY_FILTERS };
+  for (const key of FILTER_KEYS) filters[key] = params.get(key) ?? '';
+  return filters;
+}
+
+function requestParams(page: number, filters: ExerciseFilters): Record<string, string | number> {
+  const params: Record<string, string | number> = { page, limit: PAGE_SIZE };
+  for (const key of FILTER_KEYS) {
+    const value = filters[key].trim();
+    if (value) params[key] = value;
+  }
+  return params;
+}
+
+/** Endereço do catálogo para esta busca (`destino` indica para onde vão os exercícios escolhidos). */
+function catalogUrl(page: number, filters: ExerciseFilters, destino: string | null): string {
+  const params = new URLSearchParams();
+  for (const key of FILTER_KEYS) {
+    const value = filters[key].trim();
+    if (value) params.set(key, value);
+  }
+  if (page > 1) params.set('page', String(page));
+  if (destino) params.set('destino', destino);
+  const query = params.toString();
+  return query ? `/exercises?${query}` : '/exercises';
+}
+
+/** Texto de um filtro ativo: o rótulo em português (a busca aparece entre aspas). */
+function filterChipLabel(key: keyof ExerciseFilters, value: string): string {
+  return key === 'q' ? `“${value}”` : catalogLabel(value);
+}
+
+const FILTER_NAME: Record<keyof ExerciseFilters, string> = {
+  q: 'Busca',
+  muscle: 'Músculo',
+  equipment: 'Equipamento',
+  level: 'Nível',
+  category: 'Categoria',
+};
 
 type FilterOptions = { muscles: string[]; equipment: string[] };
 
@@ -83,16 +127,28 @@ export default function ExercisesPage() {
 function ExercisesCatalog() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const wantsSession = searchParams.get('destino') === 'treino';
+  const destino = searchParams.get('destino');
+  const wantsSession = destino === 'treino';
   const live = useLiveSession();
   const [targetChoice, setTargetChoice] = useState<Target | null>(null);
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({ muscles: [], equipment: [] });
-  const [draftFilters, setDraftFilters] = useState<ExerciseFilters>(EMPTY_FILTERS);
-  const [appliedFilters, setAppliedFilters] = useState<ExerciseFilters>(EMPTY_FILTERS);
+  // A busca da primeira carga vem da URL; depois a URL acompanha o que foi aplicado.
+  const [initial] = useState(() => ({
+    filters: filtersFromUrl(searchParams),
+    page: Math.max(1, Number(searchParams.get('page')) || 1),
+  }));
+  const [draftFilters, setDraftFilters] = useState<ExerciseFilters>(initial.filters);
+  const [appliedFilters, setAppliedFilters] = useState<ExerciseFilters>(initial.filters);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  // Exercícios com instruções abertas.
+  const [openDetails, setOpenDetails] = useState<ReadonlySet<string>>(() => new Set());
+  const resultsRef = useRef<HTMLDivElement>(null);
+  // Só a resposta da busca mais recente vale (filtros aplicam na hora e podem se atropelar).
+  const lastRequest = useRef(0);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     total: 0,
-    page: 1,
+    page: initial.page,
     limit: PAGE_SIZE,
     totalPages: 0,
   });
@@ -109,19 +165,13 @@ function ExercisesCatalog() {
     async (targetPage: number, filters: ExerciseFilters) => {
       setLoading(true);
       setError('');
-
-      const params: Record<string, string | number> = {
-        page: targetPage,
-        limit: PAGE_SIZE,
-      };
-
-      for (const key of Object.keys(filters) as (keyof ExerciseFilters)[]) {
-        const value = filters[key].trim();
-        if (value) params[key] = value;
-      }
+      const request = ++lastRequest.current;
 
       try {
-        const response = await api.get<ExerciseListResponse>('/exercises', { params });
+        const response = await api.get<ExerciseListResponse>('/exercises', {
+          params: requestParams(targetPage, filters),
+        });
+        if (request !== lastRequest.current) return;
         setExercises(response.data.data ?? []);
         setPagination(
           response.data.pagination ?? {
@@ -132,17 +182,19 @@ function ExercisesCatalog() {
           },
         );
         setAppliedFilters(filters);
+        router.replace(catalogUrl(targetPage, filters, destino), { scroll: false });
       } catch (requestError) {
+        if (request !== lastRequest.current) return;
         console.error('Erro ao carregar catálogo de exercícios:', requestError);
         setError(
           'Não foi possível carregar o catálogo. Confira se a API está rodando e se sua sessão continua ativa.',
         );
         setExercises([]);
       } finally {
-        setLoading(false);
+        if (request === lastRequest.current) setLoading(false);
       }
     },
-    [],
+    [router, destino],
   );
 
   useEffect(() => {
@@ -163,19 +215,18 @@ function ExercisesCatalog() {
       })
       .catch((requestError: unknown) => console.warn('Filtros indisponíveis; usando campos de texto.', requestError));
     api
-      .get<ExerciseListResponse>('/exercises', { params: { page: 1, limit: PAGE_SIZE } })
+      .get<ExerciseListResponse>('/exercises', { params: requestParams(initial.page, initial.filters) })
       .then((response) => {
         if (cancelled) return;
         setExercises(response.data.data ?? []);
         setPagination(
           response.data.pagination ?? {
             total: response.data.data?.length ?? 0,
-            page: 1,
+            page: initial.page,
             limit: PAGE_SIZE,
             totalPages: 1,
           },
         );
-        setAppliedFilters(EMPTY_FILTERS);
       })
       .catch((requestError: unknown) => {
         if (cancelled) return;
@@ -191,7 +242,7 @@ function ExercisesCatalog() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [router, initial]);
 
   function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -201,6 +252,28 @@ function ExercisesCatalog() {
   function clearFilters() {
     setDraftFilters(EMPTY_FILTERS);
     void loadExercises(1, EMPTY_FILTERS);
+  }
+
+  /** Listas aplicam na hora; digitar só aplica ao buscar (Enter ou botão). */
+  function applyFilter(key: keyof ExerciseFilters, value: string) {
+    const next = { ...draftFilters, [key]: value };
+    setDraftFilters(next);
+    void loadExercises(1, next);
+  }
+
+  /** Muda de página e leva o usuário ao início da nova lista. */
+  async function goToPage(page: number) {
+    await loadExercises(page, appliedFilters);
+    resultsRef.current?.scrollIntoView({ block: 'start' });
+  }
+
+  function toggleDetails(id: string) {
+    setOpenDetails((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   /**
@@ -230,7 +303,7 @@ function ExercisesCatalog() {
   function startFreeHere() {
     beginLiveSession(startEmptySession(makeUid, new Date().toISOString()));
     setTargetChoice('session');
-    setNotice('Treino livre iniciado. Agora é só tocar em "Adicionar ao treino".');
+    setNotice('Treino livre iniciado. Agora é só tocar em "Adicionar".');
   }
 
   /**
@@ -247,7 +320,7 @@ function ExercisesCatalog() {
 
     if (result.status === 'duplicate') {
       const addAgain = window.confirm(
-        `"${exercise.name}" já está no treino. Adicionar novamente (por exemplo, em outro bloco do treino)?`,
+        `"${exercise.name}" já está na rotina. Adicionar novamente (por exemplo, em outro bloco do treino)?`,
       );
       if (!addAgain) return;
       result = addCatalogExercise(draftStore.getSnapshot(), ref, makeUid, { allowDuplicate: true });
@@ -257,20 +330,19 @@ function ExercisesCatalog() {
       const added = result.draft;
       draftStore.update(() => added);
       setNotice(
-        `"${exercise.name}" adicionado ao treino. Total no rascunho: ${added.exercises.length}. ` +
-          'Defina as séries na tela do treino.',
+        `"${exercise.name}" adicionado à rotina. Total no rascunho: ${added.exercises.length}. ` +
+          'Defina as séries na tela da rotina.',
       );
     }
   }
 
+  const activeFilters = FILTER_KEYS.filter((key) => appliedFilters[key].trim() !== '');
+  const panelFilterCount = activeFilters.filter((key) => key !== 'q').length;
+  const hereUrl = catalogUrl(pagination.page, appliedFilters, destino);
+
   return (
     <div className={styles.page}>
-      <header>
-        <h1 className={ui.pageTitle}>Catálogo de exercícios</h1>
-        <p className={ui.pageSubtitle}>
-          Encontre exercícios, consulte a execução e adicione quantos quiser ao seu treino.
-        </p>
-      </header>
+      <h1 className={cx(ui.pageTitle, styles.title)}>Catálogo de exercícios</h1>
 
       {live ? (
         <section className={cx(ui.card, styles.targetPanel)} aria-label="Destino dos exercícios">
@@ -290,7 +362,7 @@ function ExercisesCatalog() {
               aria-pressed={target === 'draft'}
               onClick={() => setTargetChoice('draft')}
             >
-              📋 {draft.editingId ? 'Treino em edição' : 'Treino planejado'}
+              📋 {draft.editingId ? 'Rotina em edição' : 'Rotina'}
             </button>
           </div>
         </section>
@@ -305,26 +377,41 @@ function ExercisesCatalog() {
         )
       )}
 
-      <section className={cx(ui.card, styles.searchPanel)} aria-label="Filtros de exercícios">
-        <form onSubmit={handleSearch}>
-          <div className={styles.filterGrid}>
-            <label className={cx(ui.fieldLabel, styles.searchField)}>
-              Pesquisar
-              <input
-                className={ui.control}
-                type="search"
-                value={draftFilters.q}
-                onChange={(event) => setDraftFilters({ ...draftFilters, q: event.target.value })}
-                placeholder="Ex.: supino, agachamento..."
-              />
-            </label>
+      <section
+        className={cx(ui.card, styles.searchPanel, filtersOpen && styles.searchPanelOpen)}
+        aria-label="Busca e filtros de exercícios"
+      >
+        <form onSubmit={handleSearch} className={styles.searchForm}>
+          <div className={styles.searchRow}>
+            <input
+              className={cx(ui.control, styles.searchInput)}
+              type="search"
+              aria-label="Pesquisar exercícios"
+              value={draftFilters.q}
+              onChange={(event) => setDraftFilters({ ...draftFilters, q: event.target.value })}
+              placeholder="Ex.: supino"
+            />
+            <button className={cx(ui.btn, ui.btnPrimary, styles.searchBtn)} type="submit" disabled={loading}>
+              Buscar
+            </button>
+            <button
+              className={cx(ui.btn, ui.btnSecondary, styles.searchBtn, styles.filterToggle)}
+              type="button"
+              aria-expanded={filtersOpen}
+              aria-controls="catalog-filters"
+              onClick={() => setFiltersOpen((open) => !open)}
+            >
+              Filtros{panelFilterCount > 0 && ` (${panelFilterCount})`}
+            </button>
+          </div>
+          <div id="catalog-filters" className={styles.filterGrid}>
             <label className={ui.fieldLabel}>
               Músculo
               {filterOptions.muscles.length > 0 ? (
                 <select
                   className={ui.control}
                   value={draftFilters.muscle}
-                  onChange={(event) => setDraftFilters({ ...draftFilters, muscle: event.target.value })}
+                  onChange={(event) => applyFilter('muscle', event.target.value)}
                 >
                   <option value="">Todos</option>
                   {filterOptions.muscles.map((muscle) => (
@@ -348,7 +435,7 @@ function ExercisesCatalog() {
                 <select
                   className={ui.control}
                   value={draftFilters.equipment}
-                  onChange={(event) => setDraftFilters({ ...draftFilters, equipment: event.target.value })}
+                  onChange={(event) => applyFilter('equipment', event.target.value)}
                 >
                   <option value="">Todos</option>
                   {filterOptions.equipment.map((item) => (
@@ -368,30 +455,47 @@ function ExercisesCatalog() {
             </label>
             <label className={ui.fieldLabel}>
               Nível
-              <input
+              <select
                 className={ui.control}
                 value={draftFilters.level}
-                onChange={(event) => setDraftFilters({ ...draftFilters, level: event.target.value })}
-                placeholder="Ex.: iniciante"
-              />
+                onChange={(event) => applyFilter('level', event.target.value)}
+              >
+                <option value="">Todos</option>
+                {LEVEL_OPTIONS.map((level) => (
+                  <option key={level} value={level}>
+                    {catalogLabel(level)}
+                  </option>
+                ))}
+              </select>
             </label>
-          </div>
-          <div className={styles.filterActions}>
-            <button className={cx(ui.btn, ui.btnPrimary)} type="submit" disabled={loading}>
-              {loading ? 'Buscando...' : 'Buscar exercícios'}
-            </button>
-            <button className={cx(ui.btn, ui.btnSecondary)} type="button" onClick={clearFilters} disabled={loading}>
-              Limpar filtros
-            </button>
           </div>
         </form>
       </section>
 
-      <div className={styles.resultsBar} role="status">
+      {activeFilters.length > 0 && (
+        <div className={styles.activeFilters} role="group" aria-label="Filtros ativos">
+          {activeFilters.map((key) => (
+            <button
+              key={key}
+              type="button"
+              className={styles.chip}
+              aria-label={`Remover ${FILTER_NAME[key].toLowerCase()}: ${filterChipLabel(key, appliedFilters[key])}`}
+              onClick={() => applyFilter(key, '')}
+            >
+              {filterChipLabel(key, appliedFilters[key])} <span aria-hidden="true">✕</span>
+            </button>
+          ))}
+          <button type="button" className={styles.clearBtn} onClick={clearFilters} disabled={loading}>
+            Limpar filtros
+          </button>
+        </div>
+      )}
+
+      <div ref={resultsRef} className={styles.resultsBar} role="status">
         <p>
           {loading
             ? 'Carregando catálogo...'
-            : `${pagination.total.toLocaleString('pt-BR')} exercícios encontrados`}
+            : `${pagination.total.toLocaleString('pt-BR')} ${pagination.total === 1 ? 'exercício encontrado' : 'exercícios encontrados'}`}
         </p>
         {!loading && pagination.totalPages > 0 && (
           <span>
@@ -423,40 +527,95 @@ function ExercisesCatalog() {
         {exercises.map((exercise) => {
           const inWorkout =
             target === 'session' && live ? countInSession(live, exercise.id) : countOccurrences(draft, exercise.id);
+          // O que mais pesa na escolha vem primeiro: músculos e equipamento; nível e categoria depois.
+          const primaryInfo = [
+            exercise.primaryMuscles?.map(catalogLabel).join(', '),
+            exercise.equipment && catalogLabel(exercise.equipment),
+          ].filter((item): item is string => Boolean(item));
+          const secondaryInfo = [
+            exercise.level && catalogLabel(exercise.level),
+            exercise.category && catalogLabel(exercise.category),
+          ].filter((item): item is string => Boolean(item));
+          const detailsOpen = openDetails.has(exercise.id);
+          const detailsId = `exercise-details-${exercise.id}`;
           return (
             <article key={exercise.id} className={cx(ui.card, styles.exerciseCard)}>
-              <div className={styles.imageFrame}>
-                {exercise.imageUrls?.[0] ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={exercise.imageUrls[0]}
-                    alt={`Demonstração de ${exercise.name}`}
-                    loading="lazy"
-                    onError={(event) => {
-                      event.currentTarget.style.visibility = 'hidden';
-                    }}
-                  />
-                ) : (
-                  <div className={styles.imageFallback}>Sem imagem disponível</div>
-                )}
+              <div className={styles.cardMain}>
+                <div className={styles.imageFrame}>
+                  {exercise.imageUrls?.[0] ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={exercise.imageUrls[0]}
+                      alt={`Demonstração de ${exercise.name}`}
+                      loading="lazy"
+                      onError={(event) => {
+                        event.currentTarget.style.visibility = 'hidden';
+                      }}
+                    />
+                  ) : (
+                    <div className={styles.imageFallback}>Sem imagem</div>
+                  )}
+                </div>
+
+                <div className={styles.cardContent}>
+                  <h2>{exercise.name}</h2>
+                  {primaryInfo.length > 0 && <p className={styles.metaPrimary}>{primaryInfo.join(' · ')}</p>}
+                  {secondaryInfo.length > 0 && <p className={styles.metaSecondary}>{secondaryInfo.join(' · ')}</p>}
+                  {inWorkout > 0 && (
+                    <p className={styles.inWorkoutTag}>
+                      {target === 'session' ? '✓ No treino' : '✓ Na rotina'}
+                      {inWorkout > 1 ? ` ×${inWorkout}` : ''}
+                    </p>
+                  )}
+                </div>
               </div>
 
-              <div className={styles.cardContent}>
-                <div className={styles.cardTitleRow}>
-                  <h2>{exercise.name}</h2>
-                  {exercise.level && <span className={styles.levelTag}>{exercise.level}</span>}
-                </div>
+              <div className={styles.cardActions}>
+                <button
+                  className={cx(ui.btn, ui.btnPrimary, styles.actionBtn, styles.addBtn)}
+                  type="button"
+                  aria-label={`Adicionar ${exercise.name} ${target === 'session' ? 'ao treino em andamento' : 'à rotina'}`}
+                  onClick={() => chooseExercise(exercise)}
+                >
+                  + Adicionar
+                </button>
+                <Link
+                  href={progressPath(exercise.id, hereUrl)}
+                  className={cx(ui.btn, ui.btnSecondary, styles.actionBtn)}
+                  aria-label={`Evolução em ${exercise.name}`}
+                >
+                  Evolução
+                </Link>
+                <button
+                  className={cx(ui.btn, ui.btnSecondary, styles.actionBtn)}
+                  type="button"
+                  aria-label={`Instruções de ${exercise.name}`}
+                  aria-expanded={detailsOpen}
+                  aria-controls={detailsId}
+                  onClick={() => toggleDetails(exercise.id)}
+                >
+                  Instruções
+                </button>
+              </div>
 
-                <div className={styles.metadata}>
-                  {exercise.primaryMuscles?.length > 0 && (
-                    <p><strong>Músculos principais:</strong> {exercise.primaryMuscles.map(catalogLabel).join(', ')}</p>
+              {detailsOpen && (
+                <div id={detailsId} className={styles.instructions}>
+                  {exercise.imageUrls?.length > 0 && (
+                    <div className={styles.detailImages}>
+                      {exercise.imageUrls.slice(0, 2).map((url, index) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          key={url}
+                          src={url}
+                          alt={`Demonstração de ${exercise.name}, posição ${index + 1}`}
+                          loading="lazy"
+                          onError={(event) => {
+                            event.currentTarget.style.visibility = 'hidden';
+                          }}
+                        />
+                      ))}
+                    </div>
                   )}
-                  {exercise.equipment && <p><strong>Equipamento:</strong> {catalogLabel(exercise.equipment)}</p>}
-                  {exercise.category && <p><strong>Categoria:</strong> {exercise.category}</p>}
-                </div>
-
-                <details className={styles.instructions}>
-                  <summary>Ver instruções</summary>
                   {exercise.instructions?.length ? (
                     <ol>
                       {exercise.instructions.map((instruction, index) => (
@@ -471,26 +630,8 @@ function ExercisesCatalog() {
                       <strong>Músculos secundários:</strong> {exercise.secondaryMuscles.map(catalogLabel).join(', ')}
                     </p>
                   )}
-                </details>
-
-                <div className={styles.cardActions}>
-                  <button
-                    className={cx(ui.btn, ui.btnPrimary, ui.btnBlock)}
-                    type="button"
-                    onClick={() => chooseExercise(exercise)}
-                  >
-                    {target === 'session' ? 'Adicionar ao treino em andamento' : 'Adicionar ao treino'}
-                  </button>
-                  {inWorkout > 0 && (
-                    <span className={styles.inWorkoutTag}>
-                      ✓ No treino{inWorkout > 1 ? ` ×${inWorkout}` : ''}
-                    </span>
-                  )}
-                  <Link href={progressPath(exercise.id)} className={styles.progressLink}>
-                    Ver minha evolução
-                  </Link>
                 </div>
-              </div>
+              )}
             </article>
           );
         })}
@@ -502,7 +643,7 @@ function ExercisesCatalog() {
             type="button"
             className={cx(ui.btn, ui.btnSecondary)}
             disabled={pagination.page <= 1}
-            onClick={() => void loadExercises(pagination.page - 1, appliedFilters)}
+            onClick={() => void goToPage(pagination.page - 1)}
           >
             Página anterior
           </button>
@@ -513,7 +654,7 @@ function ExercisesCatalog() {
             type="button"
             className={cx(ui.btn, ui.btnSecondary)}
             disabled={pagination.page >= pagination.totalPages}
-            onClick={() => void loadExercises(pagination.page + 1, appliedFilters)}
+            onClick={() => void goToPage(pagination.page + 1)}
           >
             Próxima página
           </button>
@@ -533,15 +674,15 @@ function ExercisesCatalog() {
           </Link>
         </div>
       ) : draft.exercises.length > 0 && (
-        <div className={styles.draftBar} role="region" aria-label="Treino planejado em montagem">
+        <div className={styles.draftBar} role="region" aria-label="Rotina em montagem">
           <span>
-            {draft.editingId ? 'Editando treino' : 'Novo treino'}:{' '}
+            {draft.editingId ? 'Editando rotina' : 'Nova rotina'}:{' '}
             <strong>
               {draft.exercises.length} {draft.exercises.length === 1 ? 'exercício' : 'exercícios'}
             </strong>
           </span>
           <Link href="/dashboard#workout-form" className={styles.draftBarLink}>
-            Ver treino e definir séries →
+            Ver rotina e definir séries →
           </Link>
         </div>
       )}
