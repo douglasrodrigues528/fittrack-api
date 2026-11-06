@@ -23,7 +23,9 @@
     "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
     "migration:run": "typeorm-ts-node-commonjs migration:run -d src/infra/database/data-source.ts",
     "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/infra/database/data-source.ts",
-    "migration:run:prod": "typeorm migration:run -d dist/infra/database/data-source.js"
+    "migration:run:prod": "node dist/infra/database/production/cli.js migrate",
+    "db:prod:migrate": "node dist/infra/database/production/cli.js migrate",
+    "db:prod:catalog": "node dist/infra/database/production/cli.js catalog"
   },
   "dependencies": {
     "@nestjs/cache-manager": "^3.1.2",
