@@ -8,10 +8,14 @@ import { ConfigService } from '@nestjs/config';
 
 import { AppModule } from './app.module';
 import { getCorsOrigins, isProduction } from './shared/config/app-config';
+import { applySecurityHeaders } from './shared/http/security-headers';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);
+
+  // nosniff, Referrer-Policy e X-Frame-Options em todas as respostas; sem X-Powered-By.
+  applySecurityHeaders(app);
 
   // Atrás de proxy (Render etc.): TRUST_PROXY=1 faz request.ip ser o IP real do cliente,
   // usado no limite de tentativas de login por IP.

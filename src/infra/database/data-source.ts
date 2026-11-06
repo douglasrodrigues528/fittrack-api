@@ -1,6 +1,10 @@
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 
+import {
+  resolveConnection,
+  typeOrmConnectionOptions,
+} from './connection-options';
 import { ExerciseEntity } from './entities/exercise.entity';
 import { SessionSetEntity } from './entities/session-set.entity';
 import { UserEntity } from './entities/user.entity';
@@ -15,21 +19,13 @@ try {
 }
 
 /**
- * DataSource usado pela CLI do TypeORM para rodar migrations
- * (`npm run migration:run`). Lê as mesmas variáveis de ambiente da API.
+ * DataSource usado pela CLI do TypeORM em DESENVOLVIMENTO (`npm run migration:run`).
+ * Lê as mesmas variáveis de ambiente da API, inclusive o `.env`.
+ * Produção nunca passa por aqui: use `npm run db:prod:migrate` (veja DEPLOY.md).
  */
 export default new DataSource({
   type: 'postgres',
-  ...(process.env.DATABASE_URL
-    ? { url: process.env.DATABASE_URL }
-    : {
-        host: process.env.DB_HOST,
-        port: Number(process.env.DB_PORT ?? 5432),
-        username: process.env.DB_USER,
-        password: process.env.DB_PASSWORD,
-        database: process.env.DB_NAME,
-      }),
-  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+  ...typeOrmConnectionOptions(resolveConnection(process.env)),
   entities: [
     UserEntity,
     WorkoutEntity,

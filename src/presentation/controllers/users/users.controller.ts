@@ -7,15 +7,24 @@ import {
   Param,
   Patch,
   Post,
+  Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import type { Request, Response } from 'express';
 
 import { CreateUserDto } from '../../../application/dto/create-user.dto';
 import { UpdateUserDto } from '../../../application/dto/update-user.dto';
 import { UsersService } from '../../../application/services/users/users.service';
+import {
+  SignupLimitService,
+  TooManySignupsException,
+} from '../../../application/services/users/signup-limit.service';
+import { clientIp } from '../../../shared/http/client-ip';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 
 type AuthUser = { userId: string; email: string };
@@ -30,11 +39,31 @@ function assertSelf(id: string, user: AuthUser) {
 @ApiTags('Users')
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly signupLimit: SignupLimitService,
+    private readonly configService: ConfigService,
+  ) {}
 
+  /** Cadastro público: no máximo SIGNUP_LIMIT_PER_HOUR contas por IP por hora (429). */
   @Post()
-  create(@Body() data: CreateUserDto) {
-    return this.usersService.create(data);
+  async create(
+    @Body() data: CreateUserDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const ip = clientIp(request, this.configService);
+    try {
+      this.signupLimit.assertAllowed(ip);
+    } catch (error) {
+      if (error instanceof TooManySignupsException) {
+        response.setHeader('Retry-After', String(error.retryAfterSeconds));
+      }
+      throw error;
+    }
+    const user = await this.usersService.create(data);
+    this.signupLimit.recordSignup(ip);
+    return user;
   }
 
   @UseGuards(AuthGuard('jwt'))

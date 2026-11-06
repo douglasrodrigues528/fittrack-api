@@ -67,6 +67,8 @@ describeE2E('Jornada inicial, limite de treinos e sessões (e2e)', () => {
     // Variáveis do processo têm prioridade sobre o .env no ConfigModule.
     delete process.env.DATABASE_URL;
     process.env.DB_NAME = dbName;
+    // A suíte cria várias contas do mesmo IP local; o limite de 5/h é testado em health-security.
+    process.env.SIGNUP_LIMIT_PER_HOUR = '1000';
     // E2E_SYNCHRONIZE=false testa num banco criado só pelas migrations (como em produção).
     process.env.DB_SYNCHRONIZE = process.env.E2E_SYNCHRONIZE ?? 'true';
 
