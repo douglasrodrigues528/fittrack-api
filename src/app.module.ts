@@ -9,7 +9,12 @@ import { WorkoutsModule } from './presentation/modules/workouts/workouts.module'
 import { ExercisesModule } from './presentation/modules/exercises/exercises.module';
 import { SessionsModule } from './presentation/modules/sessions/sessions.module';
 import { OnboardingModule } from './presentation/modules/onboarding/onboarding.module';
+import { HealthController } from './presentation/controllers/health/health.controller';
 import { isProduction } from './shared/config/app-config';
+import {
+  resolveConnection,
+  typeOrmConnectionOptions,
+} from './infra/database/connection-options';
 
 @Module({
   imports: [
@@ -26,9 +31,6 @@ import { isProduction } from './shared/config/app-config';
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
-        const databaseUrl = configService.get<string>('DATABASE_URL');
-        const useSsl = configService.get<string>('DB_SSL') === 'true';
-
         // synchronize altera o esquema automaticamente: útil só em desenvolvimento.
         // Em produção fica desligado por padrão; use migrations.
         const synchronize =
@@ -36,18 +38,20 @@ import { isProduction } from './shared/config/app-config';
             ? configService.get<string>('DB_SYNCHRONIZE') === 'true'
             : !isProduction(configService);
 
+        // SSL: com DB_SSL=true (ou sslmode na URL) o certificado do banco é validado.
+        const connection = resolveConnection({
+          DATABASE_URL: configService.get<string>('DATABASE_URL'),
+          DB_HOST: configService.get<string>('DB_HOST'),
+          DB_PORT: configService.get<string>('DB_PORT'),
+          DB_USER: configService.get<string>('DB_USER'),
+          DB_PASSWORD: configService.get<string>('DB_PASSWORD'),
+          DB_NAME: configService.get<string>('DB_NAME'),
+          DB_SSL: configService.get<string>('DB_SSL'),
+        });
+
         return {
           type: 'postgres' as const,
-          ...(databaseUrl
-            ? { url: databaseUrl }
-            : {
-                host: configService.get<string>('DB_HOST'),
-                port: Number(configService.get<string>('DB_PORT') ?? 5432),
-                username: configService.get<string>('DB_USER'),
-                password: configService.get<string>('DB_PASSWORD'),
-                database: configService.get<string>('DB_NAME'),
-              }),
-          ssl: useSsl ? { rejectUnauthorized: false } : false,
+          ...typeOrmConnectionOptions(connection),
           autoLoadEntities: true,
           synchronize,
         };
@@ -61,5 +65,6 @@ import { isProduction } from './shared/config/app-config';
     SessionsModule,
     OnboardingModule,
   ],
+  controllers: [HealthController],
 })
 export class AppModule {}

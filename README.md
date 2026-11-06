@@ -514,12 +514,15 @@ GET  /workouts/quota         # { used, limit: 7, remaining }
 
 ## 🗃️ Migrations
 
-Em desenvolvimento o esquema é sincronizado automaticamente (`synchronize`, só acrescenta colunas/índices nesta versão). Em produção use a migration, que é idempotente e não apaga dados:
+Em desenvolvimento o esquema é sincronizado automaticamente (`synchronize`, só acrescenta colunas/índices nesta versão). Em produção use as migrations, que são idempotentes e não apagam dados:
 
 ```bash
-npm run migration:run          # a partir do código-fonte (ts-node)
-npm run migration:run:prod     # a partir do build (dist/)
+npm run migration:run          # desenvolvimento: a partir do código-fonte (ts-node), usa o .env
+npm run db:prod:migrate        # produção: a partir do build (dist/), simulação por padrão
+npm run db:prod:catalog        # produção: importa os 873 exercícios do arquivo validado
 ```
+
+Os comandos `db:prod:*` (e o antigo `migration:run:prod`, que agora é o mesmo comando) nunca usam o `.env` como destino: exigem `DATABASE_URL` e `CONFIRM_DB_HOST` no terminal, SSL validado, e só gravam com `--apply` e confirmação digitada. Passo a passo em [DEPLOY.md](DEPLOY.md), seção 4.
 
 Testes e2e da jornada (exigem um banco **descartável**; nunca o de desenvolvimento):
 

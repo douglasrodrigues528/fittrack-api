@@ -74,6 +74,8 @@ describeE2E('Calendário de consistência (e2e)', () => {
   beforeAll(async () => {
     delete process.env.DATABASE_URL;
     process.env.DB_NAME = dbName;
+    // A suíte cria várias contas do mesmo IP local; o limite de 5/h é testado em health-security.
+    process.env.SIGNUP_LIMIT_PER_HOUR = '1000';
     process.env.DB_SYNCHRONIZE = process.env.E2E_SYNCHRONIZE ?? 'true';
     const { AppModule } = await import('../src/app.module');
     const moduleRef = await Test.createTestingModule({

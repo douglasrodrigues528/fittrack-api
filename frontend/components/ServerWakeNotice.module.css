@@ -1,0 +1,58 @@
+/* Aviso de servidor iniciando: fixo no topo, abaixo da barra superior, sem cobrir a navegação inferior. */
+.region {
+  position: fixed;
+  top: calc(var(--ft-topbar-h) + 8px);
+  left: 50%;
+  z-index: 60;
+  width: min(calc(100% - 24px), 480px);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--ft-radius-sm);
+  background: #17212b;
+  color: #ffffff;
+  box-shadow: var(--ft-shadow);
+}
+
+.text {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.text strong {
+  display: block;
+}
+
+.spinner {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  border: 3px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Sem animação para quem pede menos movimento: o indicador fica parado. */
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+    border-top-color: rgba(255, 255, 255, 0.35);
+    background: #ffffff;
+    transform: scale(0.5);
+  }
+}

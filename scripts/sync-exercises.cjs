@@ -1,7 +1,11 @@
 /*
- * Baixa o JSON traduzido e sincroniza o catálogo com PostgreSQL.
+ * DESENVOLVIMENTO: baixa o JSON traduzido e sincroniza o catálogo com o PostgreSQL LOCAL.
  * Requer Node.js 18+ (fetch nativo) e a dependência `pg` já usada pela API.
  * Execute a partir da raiz do projeto: node scripts/sync-exercises.cjs
+ *
+ * Produção NUNCA usa este script: ele baixa a versão mais recente de um repositório de
+ * terceiros. Para produção use `npm run db:prod:catalog`, que importa o arquivo local
+ * validado (SHA-256 e 873 exercícios) com confirmação. Veja DEPLOY.md.
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -37,6 +41,25 @@ function loadDotEnv() {
   }
 }
 
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]', '0.0.0.0']);
+
+/** Só aceita banco local: destino remoto é trabalho do `npm run db:prod:catalog`. */
+function assertLocalTarget() {
+  let host = process.env.DB_HOST || '';
+  if (process.env.DATABASE_URL) {
+    try {
+      host = new URL(process.env.DATABASE_URL).hostname;
+    } catch {
+      throw new Error('DATABASE_URL inválida.');
+    }
+  }
+  if (!LOCAL_HOSTS.has(host.toLowerCase())) {
+    throw new Error(
+      `Este script é só para o banco local (destino: ${host || 'desconhecido'}). Para produção use npm run db:prod:catalog (veja DEPLOY.md).`,
+    );
+  }
+}
+
 function normalizeString(value) {
   return typeof value === 'string' && value.length > 0 ? value : null;
 }
@@ -69,7 +92,7 @@ function createClient() {
   if (process.env.DATABASE_URL) {
     return new Client({
       connectionString: process.env.DATABASE_URL,
-      ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
+      ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: true } : undefined,
     });
   }
 
@@ -85,7 +108,7 @@ function createClient() {
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
-    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
+    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: true } : undefined,
   });
 }
 
@@ -164,6 +187,7 @@ async function syncExercises(exercises) {
 
 async function main() {
   loadDotEnv();
+  assertLocalTarget();
   const exercises = await downloadDataset();
   await syncExercises(exercises);
 }
